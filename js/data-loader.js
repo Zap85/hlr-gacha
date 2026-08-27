@@ -4,6 +4,8 @@ const BANNER_PATHS = ["data/banners/sample-banner.json"];
 const RESOURCE_TYPES_PATH = "data/resources/resource-types.json";
 const RESOURCE_INSTANCES_PATH = "data/resources/sample-resources.json";
 const CONSTANTS_PATH = "data/constants.json";
+const EVENT_TYPES_PATH = "data/events/event-types.json";
+const EVENTS_PATH = "data/events/sample-event.json";
 
 function isValidCalendarDate(value) {
   if (typeof value !== "string") {
@@ -264,4 +266,98 @@ async function loadIncomeCardRules(path = CONSTANTS_PATH) {
   }
 
   return rules;
+}
+
+function isValidResourceAmountMap(resources, allowNegative) {
+  return (
+    resources !== null &&
+    typeof resources === "object" &&
+    !Array.isArray(resources) &&
+    Object.entries(resources).every(
+      ([resourceId, amount]) =>
+        resourceId.trim() !== "" &&
+        Number.isSafeInteger(amount) &&
+        (allowNegative || amount >= 0),
+    )
+  );
+}
+
+function isValidEventType(eventType) {
+  return (
+    eventType !== null &&
+    typeof eventType === "object" &&
+    typeof eventType.id === "string" &&
+    eventType.id.trim() !== "" &&
+    isValidResourceAmountMap(eventType.available, false) &&
+    isValidResourceAmountMap(eventType.complete, false)
+  );
+}
+
+async function loadEventTypes(path = EVENT_TYPES_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取活动类型数据：${path}`);
+  }
+
+  const data = await response.json();
+  const eventTypes = Array.isArray(data.eventTypes)
+    ? data.eventTypes.filter(isValidEventType)
+    : [];
+  const eventTypeIds = new Set();
+
+  return eventTypes.filter((eventType) => {
+    if (eventTypeIds.has(eventType.id)) {
+      return false;
+    }
+
+    eventTypeIds.add(eventType.id);
+    return true;
+  });
+}
+
+function isValidEvent(event) {
+  return (
+    event !== null &&
+    typeof event === "object" &&
+    typeof event.id === "string" &&
+    event.id.trim() !== "" &&
+    typeof event.name === "string" &&
+    event.name.trim() !== "" &&
+    typeof event.type === "string" &&
+    event.type.trim() !== "" &&
+    isValidCalendarDate(event.startDate) &&
+    isValidCalendarDate(event.endDate) &&
+    event.startDate <= event.endDate &&
+    ["current", "future"].includes(event.status) &&
+    typeof event.isRerun === "boolean" &&
+    event.incomeAdjustment !== null &&
+    typeof event.incomeAdjustment === "object" &&
+    isValidResourceAmountMap(event.incomeAdjustment.available, true) &&
+    isValidResourceAmountMap(event.incomeAdjustment.complete, true) &&
+    Array.isArray(event.exchanges)
+  );
+}
+
+async function loadEvents(path = EVENTS_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取活动数据：${path}`);
+  }
+
+  const data = await response.json();
+  const events = Array.isArray(data.events)
+    ? data.events.filter(isValidEvent)
+    : [];
+  const eventIds = new Set();
+
+  return events.filter((event) => {
+    if (eventIds.has(event.id)) {
+      return false;
+    }
+
+    eventIds.add(event.id);
+    return true;
+  });
 }

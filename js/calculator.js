@@ -248,3 +248,125 @@ function calculateIncomeCards(
     },
   };
 }
+
+function addResourceAmounts(baseResources, adjustments = {}) {
+  const resourceIds = new Set([
+    ...Object.keys(baseResources),
+    ...Object.keys(adjustments),
+  ]);
+  const resources = {};
+
+  resourceIds.forEach((resourceId) => {
+    resources[resourceId] =
+      (baseResources[resourceId] ?? 0) +
+      (adjustments[resourceId] ?? 0);
+  });
+
+  return resources;
+}
+
+function calculateEventIncome(targetDate, event, eventTypes) {
+  const targetTimestamp = parseCalendarDate(targetDate);
+  const startTimestamp = parseCalendarDate(event.startDate);
+  const endTimestamp = parseCalendarDate(event.endDate);
+  const eventType = eventTypes.find(
+    (candidate) => candidate.id === event.type,
+  );
+
+  if (targetTimestamp === null) {
+    return { valid: false, error: "目标日期格式无效。" };
+  }
+
+  if (startTimestamp === null || endTimestamp === null) {
+    return { valid: false, error: `活动“${event.name}”日期无效。` };
+  }
+
+  if (!eventType) {
+    return { valid: false, error: `活动“${event.name}”类型无效。` };
+  }
+
+  if (targetTimestamp < startTimestamp) {
+    return {
+      valid: true,
+      error: null,
+      eventId: event.id,
+      eventName: event.name,
+      status: event.status,
+      eligible: false,
+      phase: null,
+      resources: {},
+    };
+  }
+
+  const phase = targetTimestamp < endTimestamp
+    ? "available"
+    : "complete";
+
+  return {
+    valid: true,
+    error: null,
+    eventId: event.id,
+    eventName: event.name,
+    status: event.status,
+    eligible: true,
+    phase,
+    resources: addResourceAmounts(
+      eventType[phase],
+      event.incomeAdjustment?.[phase],
+    ),
+  };
+}
+
+function getDefaultSelectedEventIds(events) {
+  return events
+    .filter((event) => !event.isRerun)
+    .map((event) => event.id);
+}
+
+function calculateSelectedEventIncome(
+  targetMode,
+  targetDate,
+  events,
+  eventTypes,
+  selectedEventIds,
+) {
+  if (targetMode !== "banner") {
+    return {
+      valid: true,
+      error: null,
+      enabled: false,
+      events: [],
+      selectedResources: {},
+    };
+  }
+
+  const selectedIds = new Set(selectedEventIds);
+  const calculatedEvents = [];
+  let selectedResources = {};
+
+  for (const event of events) {
+    const result = calculateEventIncome(targetDate, event, eventTypes);
+
+    if (!result.valid) {
+      return result;
+    }
+
+    const selected = selectedIds.has(event.id);
+    calculatedEvents.push({ ...result, selected });
+
+    if (result.eligible && selected) {
+      selectedResources = addResourceAmounts(
+        selectedResources,
+        result.resources,
+      );
+    }
+  }
+
+  return {
+    valid: true,
+    error: null,
+    enabled: true,
+    events: calculatedEvents,
+    selectedResources,
+  };
+}

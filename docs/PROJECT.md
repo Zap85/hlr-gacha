@@ -25,6 +25,7 @@ hlr gacha/
 │  ├─ constants.json
 │  ├─ permanent-packs.json
 │  ├─ events/
+│  │  ├─ event-types.json
 │  │  └─ sample-event.json
 │  ├─ banners/
 │  │  └─ sample-banner.json
@@ -53,6 +54,18 @@ Banner 表示卡池及其开池、结束时间，Event 表示活动及其活动�
 
 - Banner（卡池）：六周年庆典，2026-09-26 ～ 2026-10-12
 - Event（活动）：六周年活动，2026-09-20 ～ 2026-10-15
+
+### Event、Event Type 与 Event Pack
+
+Event 表示活动本身及其免费活动收入，Event Pack 表示人民币限时礼包，两者独立维护，避免把免费奖励与付费购买混入同一实体。`data/events/event-types.json` 保存可复用的活动类型模板；具体 Event 通过 `type` 引用模板，并只在 `incomeAdjustment` 中记录该次活动相对模板的差异。`data/events/sample-event.json` 仅提供开发测试用 Event 实例，不定义活动类型。
+
+实际活动收入由对应 type 的模板值与 Event 的 `incomeAdjustment` 相加得到。模板和调整都按 `available`、`complete` 两个阶段组织；调整允许正数、0 和负数，未出现的资源按 0 处理。这样模板规则只维护一次，同时仍能表达单次活动的例外。
+
+Event 不保存 Banner 关联。活动收入直接使用日期模块确定的 `targetDate` 与 Event 日期比较：`targetDate < startDate` 时不计入，`startDate <= targetDate < endDate` 时使用 `available`，`targetDate >= endDate` 时使用 `complete`。该收入仅在目标方式为“选择卡池”时生效，自定义日期模式不计入。
+
+`isRerun: true` 标记复刻活动并使其默认不选中，普通活动默认选中；用户仍可独立切换。Event 另以显式 `status` 区分 `current` 与 `future`，该状态由数据维护，不从日期推断。当前活动显示“可计入”，未来活动显示“预计可计入”，用于说明未来收入只是估算值，并非最终准确奖励。
+
+`exchanges` 表示消耗钻石、红钻等资源换取其他内容，属于后续可选资源消费，不属于免费活动 income。前端因此只展示模板与调整合并后的最终可计入资源，不展示模板值、调整值或具体奖励来源明细。
 
 ### Banner 标签与稳定 ID
 

@@ -167,6 +167,24 @@
         <p id="free-accumulation-error" class="date-error" aria-live="polite"></p>
         <p id="income-card-error" class="date-error" aria-live="polite"></p>
       </section>
+
+      <section aria-labelledby="event-income-section-title">
+        <h2 id="event-income-section-title">四、活动收入</h2>
+        <p id="event-income-message" aria-live="polite">正在加载活动数据。</p>
+        <div id="event-income-groups" class="event-income-groups" hidden>
+          <section aria-labelledby="current-events-title">
+            <h3 id="current-events-title">当前活动</h3>
+            <div id="current-event-income-list" class="event-income-list"></div>
+            <p id="current-events-empty" hidden>暂无可计入的当前活动。</p>
+          </section>
+          <section aria-labelledby="future-events-title">
+            <h3 id="future-events-title">未来活动</h3>
+            <div id="future-event-income-list" class="event-income-list"></div>
+            <p id="future-events-empty" hidden>暂无可计入的未来活动。</p>
+          </section>
+        </div>
+        <p id="event-income-error" class="date-error" aria-live="polite"></p>
+      </section>
     </main>
 
     <script defer src="js/calculator.js"></script>

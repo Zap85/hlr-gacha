@@ -9,6 +9,7 @@ const limitedResourceIds = new Set();
 const dateSelectionState = {
   currentDate: "",
   targetDate: "",
+  targetMode: "banner",
 };
 const incomeCardSelections = {
   monthlyCardSelected: false,
@@ -21,6 +22,16 @@ let freeDailyAccumulationRules = null;
 let freeDailyAccumulationView = null;
 let incomeCardRules = null;
 let incomeCardView = null;
+const eventIncomeState = {
+  selectedEventIds: new Set(),
+  resources: {},
+};
+let eventIncomeView = null;
+let eventTypes = [];
+let events = [];
+let eventResourceTypes = [];
+let eventIncomeLoading = true;
+let eventIncomeLoadError = "";
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -242,6 +253,152 @@ function makeIncomeCardSelectable(card, selectionKey) {
   });
 }
 
+function formatEventResources(resources) {
+  const resourceNames = new Map(
+    eventResourceTypes.map((resourceType) => [
+      resourceType.id,
+      resourceType.name,
+    ]),
+  );
+  const entries = Object.entries(resources);
+
+  if (entries.length === 0) {
+    return "无";
+  }
+
+  return entries
+    .map(
+      ([resourceId, amount]) =>
+        `${amount} ${resourceNames.get(resourceId) ?? resourceId}`,
+    )
+    .join("，");
+}
+
+function groupEligibleEventsByStatus(eligibleEvents) {
+  return {
+    current: eligibleEvents.filter((event) => event.status === "current"),
+    future: eligibleEvents.filter((event) => event.status === "future"),
+  };
+}
+
+function getEventIncomeLabel(status) {
+  return status === "future" ? "预计可计入" : "可计入";
+}
+
+function createEventIncomeCard(event) {
+  const card = document.createElement("article");
+  const heading = document.createElement("h3");
+  const income = document.createElement("p");
+  const incomeLabel = getEventIncomeLabel(event.status);
+
+  card.className = "income-card event-income-card";
+  card.classList.toggle("is-selected", event.selected);
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-pressed", String(event.selected));
+  heading.textContent = event.eventName;
+  income.textContent = `${incomeLabel}：${formatEventResources(event.resources)}`;
+  card.append(heading, income);
+
+  function toggleEvent() {
+    if (eventIncomeState.selectedEventIds.has(event.eventId)) {
+      eventIncomeState.selectedEventIds.delete(event.eventId);
+    } else {
+      eventIncomeState.selectedEventIds.add(event.eventId);
+    }
+
+    updateEventIncomeResult();
+  }
+
+  card.addEventListener("click", toggleEvent);
+  card.addEventListener("keydown", (keyboardEvent) => {
+    if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+      keyboardEvent.preventDefault();
+      toggleEvent();
+    }
+  });
+
+  return card;
+}
+
+function updateEventIncomeResult() {
+  if (!eventIncomeView) {
+    return;
+  }
+
+  eventIncomeView.currentList.replaceChildren();
+  eventIncomeView.futureList.replaceChildren();
+  eventIncomeView.groups.hidden = true;
+  eventIncomeState.resources = {};
+  eventIncomeView.error.textContent = "";
+
+  if (dateSelectionState.targetMode !== "banner") {
+    const disabledResult = calculateSelectedEventIncome(
+      dateSelectionState.targetMode,
+      dateSelectionState.targetDate,
+      events,
+      eventTypes,
+      [...eventIncomeState.selectedEventIds],
+    );
+
+    eventIncomeState.resources = disabledResult.selectedResources;
+    eventIncomeView.message.textContent =
+      "自定义日期模式下不计算活动收入。";
+    return;
+  }
+
+  if (eventIncomeLoading) {
+    eventIncomeView.message.textContent = "正在加载活动数据。";
+    return;
+  }
+
+  if (eventIncomeLoadError) {
+    eventIncomeView.message.textContent = "";
+    eventIncomeView.error.textContent = eventIncomeLoadError;
+    return;
+  }
+
+  if (!dateSelectionState.targetDate) {
+    eventIncomeView.message.textContent = "请选择有效的目标卡池。";
+    return;
+  }
+
+  const result = calculateSelectedEventIncome(
+    dateSelectionState.targetMode,
+    dateSelectionState.targetDate,
+    events,
+    eventTypes,
+    [...eventIncomeState.selectedEventIds],
+  );
+
+  if (!result.valid) {
+    eventIncomeView.message.textContent = "";
+    eventIncomeView.error.textContent = result.error;
+    return;
+  }
+
+  eventIncomeState.resources = result.selectedResources;
+  const eligibleEvents = result.events.filter((event) => event.eligible);
+
+  if (eligibleEvents.length === 0) {
+    eventIncomeView.message.textContent = "当前目标日期没有可计入的活动。";
+    return;
+  }
+
+  eventIncomeView.message.textContent = "";
+  eventIncomeView.groups.hidden = false;
+  const groupedEvents = groupEligibleEventsByStatus(eligibleEvents);
+
+  groupedEvents.current.forEach((event) => {
+    eventIncomeView.currentList.append(createEventIncomeCard(event));
+  });
+  groupedEvents.future.forEach((event) => {
+    eventIncomeView.futureList.append(createEventIncomeCard(event));
+  });
+  eventIncomeView.currentEmpty.hidden = groupedEvents.current.length > 0;
+  eventIncomeView.futureEmpty.hidden = groupedEvents.future.length > 0;
+}
+
 function resolveTargetDate(mode, banner, bannerDateType, customTargetDate) {
   if (mode === "custom") {
     return customTargetDate;
@@ -296,7 +453,9 @@ function initializeDateModule() {
 
     dateSelectionState.currentDate = currentDateInput.value;
     dateSelectionState.targetDate = targetDate;
+    dateSelectionState.targetMode = mode;
     updateFreeDailyAccumulationResult();
+    updateEventIncomeResult();
 
     actualTargetDate.textContent = targetDate || "—";
     calculatedDays.textContent = "—";
@@ -731,8 +890,52 @@ function initializeFreeDailyAccumulationModule() {
     });
 }
 
+function initializeEventIncomeModule() {
+  eventIncomeView = {
+    groups: document.querySelector("#event-income-groups"),
+    currentList: document.querySelector("#current-event-income-list"),
+    futureList: document.querySelector("#future-event-income-list"),
+    currentEmpty: document.querySelector("#current-events-empty"),
+    futureEmpty: document.querySelector("#future-events-empty"),
+    message: document.querySelector("#event-income-message"),
+    error: document.querySelector("#event-income-error"),
+  };
+
+  updateEventIncomeResult();
+
+  Promise.all([
+    loadEventTypes(),
+    loadEvents(),
+    loadResourceTypes(),
+  ])
+    .then(([loadedEventTypes, loadedEvents, loadedResourceTypes]) => {
+      eventTypes = loadedEventTypes;
+      events = loadedEvents;
+      eventResourceTypes = loadedResourceTypes;
+      eventIncomeState.selectedEventIds = new Set(
+        getDefaultSelectedEventIds(events),
+      );
+      eventIncomeLoadError =
+        eventTypes.length === 0 || events.length === 0
+          ? "没有可用的活动数据。"
+          : "";
+    })
+    .catch(() => {
+      eventTypes = [];
+      events = [];
+      eventResourceTypes = [];
+      eventIncomeLoadError =
+        "活动数据加载失败，请使用本地开发服务器打开页面。";
+    })
+    .finally(() => {
+      eventIncomeLoading = false;
+      updateEventIncomeResult();
+    });
+}
+
 if (typeof document !== "undefined") {
   initializeDateModule();
   initializeInventoryModule();
   initializeFreeDailyAccumulationModule();
+  initializeEventIncomeModule();
 }

@@ -1,7 +1,32 @@
 {
-  "id": "sample-event",
-  "name": "示例活动",
-  "resources": [],
-  "packs": [],
-  "codes": []
+  "events": [
+    {
+      "id": "庄园诡戏",
+      "name": "庄园诡戏",
+      "type": "复刻活动",
+      "startDate": "2026-08-26",
+      "endDate": "2026-09-02",
+      "status": "current",
+      "isRerun": true,
+      "incomeAdjustment": {
+        "available": {},
+        "complete": {}
+      },
+      "exchanges": []
+    },
+    {
+      "id": "怪谈：电子",
+      "name": "怪谈：电子",
+      "type": "单人活动",
+      "startDate": "2026-08-10",
+      "endDate": "2026-08-16",
+      "status": "current",
+      "isRerun": false,
+      "incomeAdjustment": {
+        "available": {},
+        "complete": {}
+      },
+      "exchanges": []
+    }
+  ]
 }

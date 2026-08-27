@@ -1,0 +1,24 @@
+{
+  "eventTypes": [
+    {
+      "id": "复刻活动",
+      "available": {
+        "diamond": 50,
+        "common_paint": 3
+      },
+      "complete": {
+        "diamond": 200,
+        "common_paint": 3
+      }
+    },
+    {
+      "id": "单人活动",
+      "available": {
+        "diamond": 40
+      },
+      "complete": {
+        "diamond": 360
+      }
+    }
+  ]
+}
