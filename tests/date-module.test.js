@@ -9,9 +9,10 @@ function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
 }
 
-const banner = JSON.parse(
+const banners = JSON.parse(
   readProjectFile(path.join("data", "banners", "sample-banner.json")),
 );
+const banner = banners.find((item) => item.id === "六周年庆典");
 const appContext = vm.createContext({});
 
 vm.runInContext(readProjectFile(path.join("js", "app.js")), appContext);
@@ -41,12 +42,13 @@ const loaderContext = vm.createContext({
       ok: true,
       json: async () =>
         requestedPath !== "invalid-banner.json"
-          ? banner
+          ? banners
           : {
               id: "invalid-banner",
               name: "无效卡池",
               startDate: null,
               endDate: "2026-10-12",
+              tags: [],
             },
     };
   },
@@ -64,8 +66,9 @@ const loadBanners = vm.runInContext("loadBanners", loaderContext);
   const invalidBanners = await loadBanners(["invalid-banner.json"]);
 
   assert.equal(requestedPaths[0], "data/banners/sample-banner.json");
-  assert.equal(validBanners.length, 1);
-  assert.equal(validBanners[0].id, "anniversary-6");
+  assert.equal(validBanners.length, 5);
+  assert.equal(validBanners[0].id, "六周年庆典");
+  assert.deepEqual(Array.from(validBanners[2].tags), ["birthday"]);
   assert.equal(invalidBanners.length, 0);
   console.log("date module: 5 banner target tests passed");
 })().catch((error) => {

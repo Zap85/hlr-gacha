@@ -1,0 +1,29 @@
+{
+  "resourceTypes": [
+    {
+      "id": "diamond",
+      "name": "钻石",
+      "management": "fixed"
+    },
+    {
+      "id": "red_diamond",
+      "name": "红钻",
+      "management": "fixed"
+    },
+    {
+      "id": "common_paint",
+      "name": "老荷兰颜料",
+      "management": "fixed"
+    },
+    {
+      "id": "timed_paint",
+      "name": "限时老荷兰",
+      "management": "validity_batch"
+    },
+    {
+      "id": "limited_paint",
+      "name": "限定老荷兰",
+      "management": "banner_applicability"
+    }
+  ]
+}

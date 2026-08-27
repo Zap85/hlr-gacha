@@ -38,12 +38,16 @@ function isValidBanner(banner) {
     banner.name.trim() !== "" &&
     isValidBannerDate(banner.startDate) &&
     isValidBannerDate(banner.endDate) &&
-    banner.startDate <= banner.endDate
+    banner.startDate <= banner.endDate &&
+    Array.isArray(banner.tags) &&
+    banner.tags.every(
+      (tag) => typeof tag === "string" && tag.trim() !== "",
+    )
   );
 }
 
 async function loadBanners(paths = BANNER_PATHS) {
-  const banners = await Promise.all(
+  const bannerGroups = await Promise.all(
     paths.map(async (path) => {
       const response = await fetch(path);
 
@@ -51,10 +55,20 @@ async function loadBanners(paths = BANNER_PATHS) {
         throw new Error(`无法读取卡池数据：${path}`);
       }
 
-      const banner = await response.json();
-      return isValidBanner(banner) ? banner : null;
+      const data = await response.json();
+      const banners = Array.isArray(data) ? data : [data];
+      return banners.filter(isValidBanner);
     }),
   );
 
-  return banners.filter((banner) => banner !== null);
+  const bannerIds = new Set();
+
+  return bannerGroups.flat().filter((banner) => {
+    if (bannerIds.has(banner.id)) {
+      return false;
+    }
+
+    bannerIds.add(banner.id);
+    return true;
+  });
 }

@@ -1,0 +1,43 @@
+{
+  "resources": [
+    {
+      "id": "timed-paint-sample-1",
+      "category": "timed_paint",
+      "availableFrom": "2026-04-30",
+      "expiresAt": "2026-05-15"
+    },
+    {
+      "id": "timed-paint-sample-2",
+      "category": "timed_paint",
+      "availableFrom": "2026-08-10",
+      "expiresAt": "2026-08-16"
+    },
+    {
+      "id": "通票老荷兰",
+      "name": "通票老荷兰",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_id",
+        "values": ["下一站世界与你"]
+      }
+    },
+    {
+      "id": "灵魂老荷兰",
+      "name": "灵魂老荷兰",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_id",
+        "values": ["庄园诡戏"]
+      }
+    },
+    {
+      "id": "甜蜜老荷兰",
+      "name": "甜蜜老荷兰",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_tag",
+        "values": ["birthday"]
+      }
+    }
+  ]
+}
