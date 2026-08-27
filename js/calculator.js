@@ -60,3 +60,23 @@ function calculateDateRange(currentDate, targetDate) {
 
   return { valid: true, days, error: null };
 }
+
+function parseInventoryAmount(value) {
+  if (value === "") {
+    return { valid: true, amount: 0, error: null };
+  }
+
+  const text = String(value);
+
+  if (!/^\d+$/.test(text)) {
+    return { valid: false, amount: null, error: "请输入非负整数。" };
+  }
+
+  const amount = Number(text);
+
+  if (!Number.isSafeInteger(amount)) {
+    return { valid: false, amount: null, error: "请输入非负整数。" };
+  }
+
+  return { valid: true, amount, error: null };
+}

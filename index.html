@@ -74,6 +74,39 @@
 
         <p id="date-error" class="date-error" aria-live="polite"></p>
       </section>
+
+      <section aria-labelledby="inventory-section-title">
+        <h2 id="inventory-section-title">二、库存资源</h2>
+
+        <h3>固定资源</h3>
+        <div id="fixed-inventory-fields" class="inventory-fields">
+          <p>正在加载资源类型…</p>
+        </div>
+        <p id="inventory-error" class="inventory-error" aria-live="polite"></p>
+
+        <h3>限时老荷兰</h3>
+        <div id="timed-inventory-fields" class="inventory-fields">
+          <p>正在加载资源类型…</p>
+        </div>
+
+        <h3>限定老荷兰</h3>
+        <div class="limited-inventory-controls">
+          <label>
+            选择限定老荷兰
+            <select id="limited-resource-select" disabled>
+              <option value="">正在加载资源实例…</option>
+            </select>
+          </label>
+          <label>
+            数量
+            <input id="limited-resource-amount" type="number" min="0" step="1" value="0" disabled>
+          </label>
+          <button id="add-limited-resource" type="button" disabled>添加</button>
+        </div>
+        <p id="limited-add-error" class="inventory-error" aria-live="polite"></p>
+        <div id="limited-inventory-list" class="inventory-fields"></div>
+        <p id="dynamic-inventory-error" class="inventory-error" aria-live="polite"></p>
+      </section>
     </main>
 
     <script defer src="js/calculator.js"></script>
