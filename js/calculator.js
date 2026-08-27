@@ -80,3 +80,74 @@ function parseInventoryAmount(value) {
 
   return { valid: true, amount, error: null };
 }
+
+function calculateFreeDailyAccumulation(currentDate, targetDate, rules) {
+  const dateRange = calculateDateRange(currentDate, targetDate);
+
+  if (!dateRange.valid) {
+    return { valid: false, error: dateRange.error };
+  }
+
+  const dailyTaskDiamonds = dateRange.days * rules.dailyTaskDiamonds;
+  let weeklyShareCount = 0;
+  let monthlySignInCount = 0;
+  let monthlySignInDiamonds = 0;
+  let monthEndCount = 0;
+  const targetTimestamp = parseCalendarDate(targetDate);
+
+  for (
+    let timestamp = parseCalendarDate(currentDate) + MILLISECONDS_PER_DAY;
+    timestamp <= targetTimestamp;
+    timestamp += MILLISECONDS_PER_DAY
+  ) {
+    const date = new Date(timestamp);
+    const dayOfMonth = date.getUTCDate();
+    const signInDiamonds = rules.monthlySignInDiamonds[dayOfMonth] ?? 0;
+
+    if (date.getUTCDay() === rules.weeklyShare.weekday) {
+      weeklyShareCount += 1;
+    }
+
+    if (signInDiamonds > 0) {
+      monthlySignInCount += 1;
+      monthlySignInDiamonds += signInDiamonds;
+    }
+
+    const nextDate = new Date(timestamp + MILLISECONDS_PER_DAY);
+
+    if (nextDate.getUTCDate() === 1) {
+      monthEndCount += 1;
+    }
+  }
+
+  const weeklyShareDiamonds =
+    weeklyShareCount * rules.weeklyShare.diamonds;
+  const monthEndCommonPaint = monthEndCount * rules.monthEndCommonPaint;
+
+  return {
+    valid: true,
+    error: null,
+    days: dateRange.days,
+    dailyTasks: {
+      days: dateRange.days,
+      diamonds: dailyTaskDiamonds,
+    },
+    weeklyShares: {
+      count: weeklyShareCount,
+      diamonds: weeklyShareDiamonds,
+    },
+    monthlySignIns: {
+      count: monthlySignInCount,
+      diamonds: monthlySignInDiamonds,
+    },
+    monthEndRewards: {
+      count: monthEndCount,
+      commonPaint: monthEndCommonPaint,
+    },
+    totals: {
+      diamonds:
+        dailyTaskDiamonds + weeklyShareDiamonds + monthlySignInDiamonds,
+      commonPaint: monthEndCommonPaint,
+    },
+  };
+}

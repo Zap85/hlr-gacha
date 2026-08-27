@@ -3,6 +3,7 @@
 const BANNER_PATHS = ["data/banners/sample-banner.json"];
 const RESOURCE_TYPES_PATH = "data/resources/resource-types.json";
 const RESOURCE_INSTANCES_PATH = "data/resources/sample-resources.json";
+const CONSTANTS_PATH = "data/constants.json";
 
 function isValidCalendarDate(value) {
   if (typeof value !== "string") {
@@ -175,4 +176,47 @@ async function loadResourceInstances(path = RESOURCE_INSTANCES_PATH) {
     resourceIds.add(resource.id);
     return true;
   });
+}
+
+function isValidFreeDailyAccumulationRules(rules) {
+  return (
+    rules !== null &&
+    typeof rules === "object" &&
+    Number.isSafeInteger(rules.dailyTaskDiamonds) &&
+    rules.dailyTaskDiamonds >= 0 &&
+    rules.weeklyShare !== null &&
+    typeof rules.weeklyShare === "object" &&
+    Number.isInteger(rules.weeklyShare.weekday) &&
+    rules.weeklyShare.weekday >= 0 &&
+    rules.weeklyShare.weekday <= 6 &&
+    Number.isSafeInteger(rules.weeklyShare.diamonds) &&
+    rules.weeklyShare.diamonds >= 0 &&
+    rules.monthlySignInDiamonds !== null &&
+    typeof rules.monthlySignInDiamonds === "object" &&
+    Object.entries(rules.monthlySignInDiamonds).every(
+      ([day, diamonds]) =>
+        /^([1-9]|[12]\d|3[01])$/.test(day) &&
+        Number.isSafeInteger(diamonds) &&
+        diamonds >= 0,
+    ) &&
+    Number.isSafeInteger(rules.monthEndCommonPaint) &&
+    rules.monthEndCommonPaint >= 0
+  );
+}
+
+async function loadFreeDailyAccumulationRules(path = CONSTANTS_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取常量数据：${path}`);
+  }
+
+  const data = await response.json();
+  const rules = data.constants?.freeDailyAccumulation;
+
+  if (!isValidFreeDailyAccumulationRules(rules)) {
+    throw new Error("免费日常积累规则无效。");
+  }
+
+  return rules;
 }

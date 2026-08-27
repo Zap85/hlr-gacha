@@ -1,3 +1,22 @@
 {
-  "constants": {}
+  "constants": {
+    "freeDailyAccumulation": {
+      "dailyTaskDiamonds": 76,
+      "weeklyShare": {
+        "weekday": 1,
+        "diamonds": 30
+      },
+      "monthlySignInDiamonds": {
+        "3": 30,
+        "6": 35,
+        "9": 40,
+        "12": 45,
+        "15": 50,
+        "19": 55,
+        "23": 60,
+        "27": 65
+      },
+      "monthEndCommonPaint": 1
+    }
+  }
 }

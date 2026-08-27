@@ -6,6 +6,12 @@ const inventoryState = {
   limitedPaintResources: {},
 };
 const limitedResourceIds = new Set();
+const dateSelectionState = {
+  currentDate: "",
+  targetDate: "",
+};
+let freeDailyAccumulationRules = null;
+let freeDailyAccumulationView = null;
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -95,6 +101,47 @@ function removeLimitedInventoryResource(resourceId) {
   return delete inventoryState.limitedPaintResources[resourceId];
 }
 
+function updateFreeDailyAccumulationResult() {
+  if (!freeDailyAccumulationView) {
+    return;
+  }
+
+  const outputs = [
+    freeDailyAccumulationView.dailyTasks,
+    freeDailyAccumulationView.weeklyShares,
+    freeDailyAccumulationView.monthlySignIns,
+  ];
+
+  if (!freeDailyAccumulationRules) {
+    outputs.forEach((output) => {
+      output.textContent = "—";
+    });
+    return;
+  }
+
+  const result = calculateFreeDailyAccumulation(
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+    freeDailyAccumulationRules,
+  );
+
+  if (!result.valid) {
+    outputs.forEach((output) => {
+      output.textContent = "—";
+    });
+    freeDailyAccumulationView.error.textContent = result.error;
+    return;
+  }
+
+  freeDailyAccumulationView.dailyTasks.textContent =
+    `${result.dailyTasks.days} 天 × ${freeDailyAccumulationRules.dailyTaskDiamonds} 钻，共 ${result.dailyTasks.diamonds} 钻`;
+  freeDailyAccumulationView.weeklyShares.textContent =
+    `${result.weeklyShares.count} 次 × ${freeDailyAccumulationRules.weeklyShare.diamonds} 钻，共 ${result.weeklyShares.diamonds} 钻`;
+  freeDailyAccumulationView.monthlySignIns.textContent =
+    `共 ${result.monthlySignIns.diamonds} 钻，${result.monthEndRewards.commonPaint} 个老荷兰颜料`;
+  freeDailyAccumulationView.error.textContent = "";
+}
+
 function resolveTargetDate(mode, banner, bannerDateType, customTargetDate) {
   if (mode === "custom") {
     return customTargetDate;
@@ -146,6 +193,10 @@ function initializeDateModule() {
       bannerDateType,
       customTargetDateInput.value,
     );
+
+    dateSelectionState.currentDate = currentDateInput.value;
+    dateSelectionState.targetDate = targetDate;
+    updateFreeDailyAccumulationResult();
 
     actualTargetDate.textContent = targetDate || "—";
     calculatedDays.textContent = "—";
@@ -508,7 +559,27 @@ function initializeInventoryModule() {
     });
 }
 
+function initializeFreeDailyAccumulationModule() {
+  freeDailyAccumulationView = {
+    dailyTasks: document.querySelector("#daily-task-result"),
+    weeklyShares: document.querySelector("#weekly-share-result"),
+    monthlySignIns: document.querySelector("#monthly-sign-in-result"),
+    error: document.querySelector("#free-accumulation-error"),
+  };
+
+  loadFreeDailyAccumulationRules()
+    .then((rules) => {
+      freeDailyAccumulationRules = rules;
+      updateFreeDailyAccumulationResult();
+    })
+    .catch(() => {
+      freeDailyAccumulationView.error.textContent =
+        "日常收入规则加载失败，请使用本地开发服务器打开页面。";
+    });
+}
+
 if (typeof document !== "undefined") {
   initializeDateModule();
   initializeInventoryModule();
+  initializeFreeDailyAccumulationModule();
 }
