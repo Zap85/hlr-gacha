@@ -10,6 +10,70 @@
     <main>
       <h1>时空中的绘旅人攒抽计算器</h1>
       <p>开发测试版</p>
+
+      <section aria-labelledby="date-section-title">
+        <h2 id="date-section-title">一、日期与计算方式</h2>
+
+        <div class="date-fields">
+          <label>
+            当前日期
+            <input id="current-date" type="date">
+          </label>
+        </div>
+
+        <fieldset>
+          <legend>目标方式</legend>
+          <label>
+            <input type="radio" name="target-mode" value="banner" checked>
+            选择卡池
+          </label>
+          <label>
+            <input type="radio" name="target-mode" value="custom">
+            自定义日期
+          </label>
+        </fieldset>
+
+        <div id="banner-target-fields" class="target-fields">
+          <label>
+            卡池
+            <select id="banner-select">
+              <option value="">正在加载卡池数据…</option>
+            </select>
+          </label>
+
+          <fieldset>
+            <legend>计算方式</legend>
+            <label>
+              <input type="radio" name="banner-date-type" value="start" checked>
+              按开池日
+            </label>
+            <label>
+              <input type="radio" name="banner-date-type" value="end">
+              按结束日
+            </label>
+          </fieldset>
+
+          <p>卡池日期范围：<output id="banner-date-range">—</output></p>
+        </div>
+
+        <label id="custom-target-field" class="target-fields" hidden>
+          自定义目标日期
+          <input id="custom-target-date" type="date" disabled>
+        </label>
+
+        <dl class="date-summary">
+          <div>
+            <dt>实际目标日期</dt>
+            <dd><output id="actual-target-date">—</output></dd>
+          </div>
+          <div>
+            <dt>计算天数</dt>
+            <dd><output id="calculated-days">—</output></dd>
+          </div>
+        </dl>
+
+        <p id="date-error" class="date-error" aria-live="polite"></p>
+      </section>
     </main>
 
     <script defer src="js/calculator.js"></script>

@@ -1,4 +1,94 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #222;
+}
+
+main {
+  width: min(100% - 2rem, 42rem);
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+section {
+  margin-top: 2rem;
+}
+
+.date-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.date-fields label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.target-fields {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.target-fields[hidden] {
+  display: none;
+}
+
+.target-fields > label,
+label.target-fields {
+  display: grid;
+  gap: 0.4rem;
+}
+
+input[type="date"],
+select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+fieldset {
+  display: flex;
+  gap: 1rem;
+  margin: 1.25rem 0 0;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.date-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 0;
+}
+
+.date-summary div {
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+}
+
+.date-summary dd {
+  margin: 0.25rem 0 0;
+}
+
+.date-error {
+  min-height: 1.5em;
+  margin-bottom: 0;
+  color: #a02222;
+}
+
+@media (max-width: 32rem) {
+  .date-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .date-summary {
+    grid-template-columns: 1fr;
+  }
+
+  fieldset {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
