@@ -124,7 +124,48 @@
             <dd><output id="monthly-sign-in-result">—</output></dd>
           </div>
         </dl>
+        <div class="income-card-grid">
+          <article id="monthly-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+            <header>
+              <h3>月卡</h3>
+              <output id="monthly-card-cost" class="income-card-cost">¥0</output>
+            </header>
+            <p>每日钻石收入：<output id="monthly-card-daily">—</output></p>
+            <p>购买立即获得：<output id="monthly-card-purchase">—</output></p>
+            <p>基础购买张数：<output id="monthly-card-base-count">—</output></p>
+            <label>
+              调整值
+              <input id="monthly-card-adjustment" type="number" step="1" value="0">
+            </label>
+            <p>实际购买张数：<output id="monthly-card-actual-count">—</output></p>
+          </article>
+
+          <article id="seasonal-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+            <header>
+              <h3>季卡</h3>
+            </header>
+            <p>每日收入：<output id="seasonal-card-daily">—</output></p>
+            <p>当前区间合计：<output id="seasonal-card-total">—</output></p>
+          </article>
+
+          <article id="annual-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+            <header>
+              <h3>年卡</h3>
+            </header>
+            <p>有效 23 日：<output id="annual-card-count">—</output></p>
+            <p>共获得：<output id="annual-card-paint">—</output></p>
+          </article>
+
+          <article id="cat-treat-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+            <header>
+              <h3>猫条</h3>
+            </header>
+            <p>有效 23 日：<output id="cat-treat-count">—</output></p>
+            <p>共获得：<output id="cat-treat-paint">—</output></p>
+          </article>
+        </div>
         <p id="free-accumulation-error" class="date-error" aria-live="polite"></p>
+        <p id="income-card-error" class="date-error" aria-live="polite"></p>
       </section>
     </main>
 

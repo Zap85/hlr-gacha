@@ -144,6 +144,55 @@ fieldset {
   margin: 0.25rem 0 0;
 }
 
+.income-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.income-card {
+  padding: 1rem;
+  border: 2px solid #ccc;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.income-card:hover {
+  border-color: #777;
+}
+
+.income-card:focus-visible {
+  outline: 2px solid #235fa4;
+  outline-offset: 2px;
+}
+
+.income-card.is-selected {
+  border-color: #235fa4;
+  background: #eef5ff;
+}
+
+.income-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.income-card h3 {
+  margin: 0;
+}
+
+.income-card-cost {
+  color: #235fa4;
+  font-weight: 600;
+}
+
+.income-card label,
+.income-card input {
+  cursor: auto;
+}
+
 @media (max-width: 32rem) {
   .date-fields {
     grid-template-columns: 1fr;
@@ -162,6 +211,10 @@ fieldset {
   }
 
   .accumulation-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .income-card-grid {
     grid-template-columns: 1fr;
   }
 

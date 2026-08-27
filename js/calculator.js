@@ -151,3 +151,100 @@ function calculateFreeDailyAccumulation(currentDate, targetDate, rules) {
     },
   };
 }
+
+function calculateIncomeCards(
+  currentDate,
+  targetDate,
+  monthlySignInDiamonds,
+  rules,
+  selections,
+) {
+  const dateRange = calculateDateRange(currentDate, targetDate);
+
+  if (!dateRange.valid) {
+    return { valid: false, error: dateRange.error };
+  }
+
+  if (!Number.isInteger(selections.monthlyCardAdjustment)) {
+    return { valid: false, error: "月卡调整值必须是整数。" };
+  }
+
+  const monthlyCardBasePurchases = Math.ceil(
+    dateRange.days / rules.monthlyCard.durationDays,
+  );
+  const monthlyCardActualPurchases = Math.max(
+    0,
+    monthlyCardBasePurchases + selections.monthlyCardAdjustment,
+  );
+  const monthlyCardDailyDiamonds = selections.monthlyCardSelected
+    ? dateRange.days * rules.monthlyCard.dailyDiamonds
+    : 0;
+  const monthlyCardPurchaseDiamonds = selections.monthlyCardSelected
+    ? monthlyCardActualPurchases * rules.monthlyCard.purchaseDiamonds
+    : 0;
+  const monthlyCardPurchaseAmountRmb = selections.monthlyCardSelected
+    ? monthlyCardActualPurchases * rules.monthlyCard.priceRmb
+    : 0;
+  const seasonalCardDailyDiamonds = selections.seasonalCardSelected
+    ? dateRange.days * rules.seasonalCard.dailyDiamonds
+    : 0;
+  let annualCardRewardCount = 0;
+  let catTreatRewardCount = 0;
+  const targetTimestamp = parseCalendarDate(targetDate);
+
+  for (
+    let timestamp = parseCalendarDate(currentDate) + MILLISECONDS_PER_DAY;
+    timestamp <= targetTimestamp;
+    timestamp += MILLISECONDS_PER_DAY
+  ) {
+    const dayOfMonth = new Date(timestamp).getUTCDate();
+
+    if (dayOfMonth === rules.annualCard.rewardDay) {
+      annualCardRewardCount += 1;
+    }
+
+    if (dayOfMonth === rules.catTreat.rewardDay) {
+      catTreatRewardCount += 1;
+    }
+  }
+
+  return {
+    valid: true,
+    error: null,
+    monthlySignInDiamonds: selections.monthlyCardSelected
+      ? monthlySignInDiamonds * 2
+      : monthlySignInDiamonds,
+    monthlyCard: {
+      selected: selections.monthlyCardSelected,
+      basePurchases: monthlyCardBasePurchases,
+      adjustment: selections.monthlyCardAdjustment,
+      actualPurchases: monthlyCardActualPurchases,
+      dailyDiamonds: monthlyCardDailyDiamonds,
+      purchaseDiamonds: monthlyCardPurchaseDiamonds,
+      purchaseAmountRmb: monthlyCardPurchaseAmountRmb,
+      countsTowardLimitedRecharge:
+        rules.monthlyCard.countsTowardLimitedRecharge,
+      totalDiamonds:
+        monthlyCardDailyDiamonds + monthlyCardPurchaseDiamonds,
+    },
+    seasonalCard: {
+      selected: selections.seasonalCardSelected,
+      dailyDiamonds: seasonalCardDailyDiamonds,
+      totalDiamonds: seasonalCardDailyDiamonds,
+    },
+    annualCard: {
+      selected: selections.annualCardSelected,
+      rewardCount: annualCardRewardCount,
+      commonPaint: selections.annualCardSelected
+        ? annualCardRewardCount * rules.annualCard.commonPaint
+        : 0,
+    },
+    catTreat: {
+      selected: selections.catTreatSelected,
+      rewardCount: catTreatRewardCount,
+      commonPaint: selections.catTreatSelected
+        ? catTreatRewardCount * rules.catTreat.commonPaint
+        : 0,
+    },
+  };
+}

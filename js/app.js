@@ -10,8 +10,17 @@ const dateSelectionState = {
   currentDate: "",
   targetDate: "",
 };
+const incomeCardSelections = {
+  monthlyCardSelected: false,
+  monthlyCardAdjustment: 0,
+  seasonalCardSelected: false,
+  annualCardSelected: false,
+  catTreatSelected: false,
+};
 let freeDailyAccumulationRules = null;
 let freeDailyAccumulationView = null;
+let incomeCardRules = null;
+let incomeCardView = null;
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -111,11 +120,27 @@ function updateFreeDailyAccumulationResult() {
     freeDailyAccumulationView.weeklyShares,
     freeDailyAccumulationView.monthlySignIns,
   ];
+  const cardOutputs = incomeCardView
+    ? [
+        incomeCardView.monthlyDaily,
+        incomeCardView.monthlyPurchase,
+        incomeCardView.monthlyBaseCount,
+        incomeCardView.monthlyActualCount,
+        incomeCardView.seasonalDaily,
+        incomeCardView.seasonalTotal,
+        incomeCardView.annualCount,
+        incomeCardView.annualPaint,
+        incomeCardView.catTreatCount,
+        incomeCardView.catTreatPaint,
+      ]
+    : [];
 
-  if (!freeDailyAccumulationRules) {
-    outputs.forEach((output) => {
+  if (!freeDailyAccumulationRules || !incomeCardRules) {
+    [...outputs, ...cardOutputs].forEach((output) => {
       output.textContent = "—";
     });
+    incomeCardView.monthlyCost.textContent =
+      incomeCardSelections.monthlyCardSelected ? "—" : "¥0";
     return;
   }
 
@@ -126,10 +151,31 @@ function updateFreeDailyAccumulationResult() {
   );
 
   if (!result.valid) {
-    outputs.forEach((output) => {
+    [...outputs, ...cardOutputs].forEach((output) => {
       output.textContent = "—";
     });
     freeDailyAccumulationView.error.textContent = result.error;
+    incomeCardView.error.textContent = "";
+    incomeCardView.monthlyCost.textContent =
+      incomeCardSelections.monthlyCardSelected ? "—" : "¥0";
+    return;
+  }
+
+  const cardResult = calculateIncomeCards(
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+    result.monthlySignIns.diamonds,
+    incomeCardRules,
+    incomeCardSelections,
+  );
+
+  if (!cardResult.valid) {
+    cardOutputs.forEach((output) => {
+      output.textContent = "—";
+    });
+    incomeCardView.error.textContent = cardResult.error;
+    incomeCardView.monthlyCost.textContent =
+      incomeCardSelections.monthlyCardSelected ? "—" : "¥0";
     return;
   }
 
@@ -138,8 +184,62 @@ function updateFreeDailyAccumulationResult() {
   freeDailyAccumulationView.weeklyShares.textContent =
     `${result.weeklyShares.count} 次 × ${freeDailyAccumulationRules.weeklyShare.diamonds} 钻，共 ${result.weeklyShares.diamonds} 钻`;
   freeDailyAccumulationView.monthlySignIns.textContent =
-    `共 ${result.monthlySignIns.diamonds} 钻，${result.monthEndRewards.commonPaint} 个老荷兰颜料`;
+    `共 ${cardResult.monthlySignInDiamonds} 钻，${result.monthEndRewards.commonPaint} 个老荷兰颜料`;
+  incomeCardView.monthlyDaily.textContent =
+    `${cardResult.monthlyCard.dailyDiamonds} 钻`;
+  incomeCardView.monthlyPurchase.textContent =
+    `${cardResult.monthlyCard.purchaseDiamonds} 钻`;
+  incomeCardView.monthlyCost.textContent =
+    `¥${cardResult.monthlyCard.purchaseAmountRmb}`;
+  incomeCardView.monthlyBaseCount.textContent =
+    `${cardResult.monthlyCard.basePurchases} 张`;
+  incomeCardView.monthlyActualCount.textContent =
+    `${cardResult.monthlyCard.actualPurchases} 张`;
+  incomeCardView.seasonalDaily.textContent =
+    `${cardResult.seasonalCard.dailyDiamonds} 钻`;
+  incomeCardView.seasonalTotal.textContent =
+    `${cardResult.seasonalCard.totalDiamonds} 钻`;
+  incomeCardView.annualCount.textContent =
+    `${cardResult.annualCard.rewardCount} 个`;
+  incomeCardView.annualPaint.textContent =
+    `${cardResult.annualCard.commonPaint} 个老荷兰颜料`;
+  incomeCardView.catTreatCount.textContent =
+    `${cardResult.catTreat.rewardCount} 个`;
+  incomeCardView.catTreatPaint.textContent =
+    `${cardResult.catTreat.commonPaint} 个老荷兰颜料`;
   freeDailyAccumulationView.error.textContent = "";
+  incomeCardView.error.textContent = "";
+}
+
+function updateIncomeCardAppearance(card, selected) {
+  card.classList.toggle("is-selected", selected);
+  card.setAttribute("aria-pressed", String(selected));
+}
+
+function makeIncomeCardSelectable(card, selectionKey) {
+  function toggleCard() {
+    incomeCardSelections[selectionKey] = !incomeCardSelections[selectionKey];
+    updateIncomeCardAppearance(card, incomeCardSelections[selectionKey]);
+    updateFreeDailyAccumulationResult();
+  }
+
+  card.addEventListener("click", (event) => {
+    if (event.target.closest("input, label")) {
+      return;
+    }
+
+    toggleCard();
+  });
+
+  card.addEventListener("keydown", (event) => {
+    if (
+      event.target === card &&
+      (event.key === "Enter" || event.key === " ")
+    ) {
+      event.preventDefault();
+      toggleCard();
+    }
+  });
 }
 
 function resolveTargetDate(mode, banner, bannerDateType, customTargetDate) {
@@ -566,10 +666,63 @@ function initializeFreeDailyAccumulationModule() {
     monthlySignIns: document.querySelector("#monthly-sign-in-result"),
     error: document.querySelector("#free-accumulation-error"),
   };
+  incomeCardView = {
+    monthlyCard: document.querySelector("#monthly-card"),
+    monthlyAdjustment: document.querySelector("#monthly-card-adjustment"),
+    monthlyCost: document.querySelector("#monthly-card-cost"),
+    monthlyDaily: document.querySelector("#monthly-card-daily"),
+    monthlyPurchase: document.querySelector("#monthly-card-purchase"),
+    monthlyBaseCount: document.querySelector("#monthly-card-base-count"),
+    monthlyActualCount: document.querySelector("#monthly-card-actual-count"),
+    seasonalCard: document.querySelector("#seasonal-card"),
+    seasonalDaily: document.querySelector("#seasonal-card-daily"),
+    seasonalTotal: document.querySelector("#seasonal-card-total"),
+    annualCard: document.querySelector("#annual-card"),
+    annualCount: document.querySelector("#annual-card-count"),
+    annualPaint: document.querySelector("#annual-card-paint"),
+    catTreatCard: document.querySelector("#cat-treat-card"),
+    catTreatCount: document.querySelector("#cat-treat-count"),
+    catTreatPaint: document.querySelector("#cat-treat-paint"),
+    error: document.querySelector("#income-card-error"),
+  };
 
-  loadFreeDailyAccumulationRules()
-    .then((rules) => {
-      freeDailyAccumulationRules = rules;
+  makeIncomeCardSelectable(
+    incomeCardView.monthlyCard,
+    "monthlyCardSelected",
+  );
+  makeIncomeCardSelectable(
+    incomeCardView.seasonalCard,
+    "seasonalCardSelected",
+  );
+  makeIncomeCardSelectable(
+    incomeCardView.annualCard,
+    "annualCardSelected",
+  );
+  makeIncomeCardSelectable(
+    incomeCardView.catTreatCard,
+    "catTreatSelected",
+  );
+
+  incomeCardView.monthlyAdjustment.addEventListener("input", () => {
+    const value = incomeCardView.monthlyAdjustment.value;
+    const adjustment = value === "" ? 0 : Number(value);
+
+    if (!Number.isInteger(adjustment)) {
+      incomeCardView.error.textContent = "月卡调整值必须是整数。";
+      return;
+    }
+
+    incomeCardSelections.monthlyCardAdjustment = adjustment;
+    updateFreeDailyAccumulationResult();
+  });
+
+  Promise.all([
+    loadFreeDailyAccumulationRules(),
+    loadIncomeCardRules(),
+  ])
+    .then(([freeRules, cardRules]) => {
+      freeDailyAccumulationRules = freeRules;
+      incomeCardRules = cardRules;
       updateFreeDailyAccumulationResult();
     })
     .catch(() => {

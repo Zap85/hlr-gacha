@@ -204,6 +204,34 @@ function isValidFreeDailyAccumulationRules(rules) {
   );
 }
 
+function isValidIncomeCardRules(rules) {
+  return (
+    rules !== null &&
+    typeof rules === "object" &&
+    Number.isSafeInteger(rules.monthlyCard?.durationDays) &&
+    rules.monthlyCard.durationDays > 0 &&
+    Number.isSafeInteger(rules.monthlyCard.dailyDiamonds) &&
+    rules.monthlyCard.dailyDiamonds >= 0 &&
+    Number.isSafeInteger(rules.monthlyCard.purchaseDiamonds) &&
+    rules.monthlyCard.purchaseDiamonds >= 0 &&
+    Number.isSafeInteger(rules.monthlyCard.priceRmb) &&
+    rules.monthlyCard.priceRmb >= 0 &&
+    rules.monthlyCard.countsTowardLimitedRecharge === true &&
+    Number.isSafeInteger(rules.seasonalCard?.dailyDiamonds) &&
+    rules.seasonalCard.dailyDiamonds >= 0 &&
+    Number.isInteger(rules.annualCard?.rewardDay) &&
+    rules.annualCard.rewardDay >= 1 &&
+    rules.annualCard.rewardDay <= 31 &&
+    Number.isSafeInteger(rules.annualCard.commonPaint) &&
+    rules.annualCard.commonPaint >= 0 &&
+    Number.isInteger(rules.catTreat?.rewardDay) &&
+    rules.catTreat.rewardDay >= 1 &&
+    rules.catTreat.rewardDay <= 31 &&
+    Number.isSafeInteger(rules.catTreat.commonPaint) &&
+    rules.catTreat.commonPaint >= 0
+  );
+}
+
 async function loadFreeDailyAccumulationRules(path = CONSTANTS_PATH) {
   const response = await fetch(path);
 
@@ -216,6 +244,23 @@ async function loadFreeDailyAccumulationRules(path = CONSTANTS_PATH) {
 
   if (!isValidFreeDailyAccumulationRules(rules)) {
     throw new Error("免费日常积累规则无效。");
+  }
+
+  return rules;
+}
+
+async function loadIncomeCardRules(path = CONSTANTS_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取常量数据：${path}`);
+  }
+
+  const data = await response.json();
+  const rules = data.constants?.incomeCards;
+
+  if (!isValidIncomeCardRules(rules)) {
+    throw new Error("日常收入卡规则无效。");
   }
 
   return rules;

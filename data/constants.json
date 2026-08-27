@@ -17,6 +17,26 @@
         "27": 65
       },
       "monthEndCommonPaint": 1
+    },
+    "incomeCards": {
+      "monthlyCard": {
+        "durationDays": 30,
+        "dailyDiamonds": 50,
+        "purchaseDiamonds": 300,
+        "priceRmb": 30,
+        "countsTowardLimitedRecharge": true
+      },
+      "seasonalCard": {
+        "dailyDiamonds": 50
+      },
+      "annualCard": {
+        "rewardDay": 23,
+        "commonPaint": 5
+      },
+      "catTreat": {
+        "rewardDay": 23,
+        "commonPaint": 1
+      }
     }
   }
 }
