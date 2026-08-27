@@ -32,6 +32,16 @@ let events = [];
 let eventResourceTypes = [];
 let eventIncomeLoading = true;
 let eventIncomeLoadError = "";
+const permanentPackState = {
+  quantities: {},
+  resources: {},
+  totalPrice: 0,
+  purchases: [],
+};
+let permanentPackView = null;
+let permanentPacks = [];
+let permanentPackRules = null;
+let permanentPackResourceTypes = [];
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -397,6 +407,162 @@ function updateEventIncomeResult() {
   });
   eventIncomeView.currentEmpty.hidden = groupedEvents.current.length > 0;
   eventIncomeView.futureEmpty.hidden = groupedEvents.future.length > 0;
+}
+
+function formatPermanentPackContents(contents) {
+  const resourceNames = new Map(
+    permanentPackResourceTypes.map((resourceType) => [
+      resourceType.id,
+      resourceType.name,
+    ]),
+  );
+
+  return Object.entries(contents)
+    .map(
+      ([resourceId, amount]) =>
+        `${resourceNames.get(resourceId) ?? resourceId}×${amount}`,
+    )
+    .join("，");
+}
+
+function renderPermanentPacks() {
+  if (!permanentPackView || !permanentPackRules) {
+    return;
+  }
+
+  const redDiamondPerPull = Number(permanentPackView.redDiamondRate.value);
+  const displayResult = getDisplayablePermanentPacks(
+    permanentPacks,
+    redDiamondPerPull,
+    permanentPackRules,
+  );
+
+  permanentPackView.list.replaceChildren();
+
+  if (!displayResult.valid) {
+    permanentPackView.error.textContent = displayResult.error;
+    return;
+  }
+
+  const displayedIds = new Set(
+    displayResult.packs.map((result) => result.pack.id),
+  );
+
+  permanentPacks.forEach((pack) => {
+    if (!displayedIds.has(pack.id)) {
+      permanentPackState.quantities[pack.id] = 0;
+    }
+  });
+
+  const purchaseResult = calculatePermanentPackPurchases(
+    permanentPacks,
+    permanentPackState.quantities,
+  );
+
+  if (!purchaseResult.valid) {
+    permanentPackView.error.textContent = purchaseResult.error;
+    return;
+  }
+
+  permanentPackState.resources = purchaseResult.resources;
+  permanentPackState.totalPrice = purchaseResult.totalPrice;
+  permanentPackState.purchases = purchaseResult.purchases;
+  permanentPackView.error.textContent = "";
+
+  displayResult.packs.forEach((result) => {
+    const { pack } = result;
+    const quantity = permanentPackState.quantities[pack.id] ?? 0;
+    const purchaseLimit = getPermanentPackPurchaseLimit(pack);
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const price = document.createElement("span");
+    const contents = document.createElement("p");
+    const theoreticalPulls = document.createElement("p");
+    const pricePerPull = document.createElement("p");
+    const purchasePrice = document.createElement("p");
+
+    card.className = "income-card permanent-pack-card";
+    card.classList.toggle("is-selected", quantity > 0);
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-pressed", String(quantity > 0));
+    heading.textContent = pack.name;
+    price.className = "permanent-pack-price";
+    price.textContent = `¥${pack.price}`;
+    header.append(heading, price);
+    contents.textContent =
+      `抽卡相关资源：${formatPermanentPackContents(pack.contents)}`;
+    theoreticalPulls.textContent =
+      `理论抽数：${result.theoreticalPulls.toFixed(2)}`;
+    pricePerPull.textContent =
+      `理论元/抽：¥${result.pricePerPull.toFixed(2)}`;
+    purchasePrice.textContent = `购买金额：¥${pack.price * quantity}`;
+    card.append(
+      header,
+      contents,
+      theoreticalPulls,
+      pricePerPull,
+      purchasePrice,
+    );
+
+    if (purchaseLimit > 1 && quantity > 0) {
+      const quantityLabel = document.createElement("label");
+      const quantityInput = document.createElement("input");
+
+      quantityLabel.className = "permanent-pack-quantity";
+      quantityLabel.append("购买数量", quantityInput);
+      quantityInput.type = "number";
+      quantityInput.min = "1";
+      quantityInput.max = String(purchaseLimit);
+      quantityInput.step = "1";
+      quantityInput.value = String(quantity);
+      quantityInput.addEventListener("input", () => {
+        const nextQuantity = Number(quantityInput.value);
+
+        if (
+          !Number.isSafeInteger(nextQuantity) ||
+          nextQuantity < 1 ||
+          nextQuantity > purchaseLimit
+        ) {
+          permanentPackView.error.textContent =
+            `“${pack.name}”购买数量必须为 1～${purchaseLimit}。`;
+          return;
+        }
+
+        permanentPackState.quantities[pack.id] = nextQuantity;
+        renderPermanentPacks();
+      });
+      card.append(quantityLabel);
+    } else {
+      const quantityText = document.createElement("p");
+      quantityText.textContent = `购买数量：${quantity}`;
+      card.append(quantityText);
+    }
+
+    function togglePack() {
+      permanentPackState.quantities[pack.id] = quantity > 0 ? 0 : 1;
+      renderPermanentPacks();
+    }
+
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("input, label")) {
+        return;
+      }
+
+      togglePack();
+    });
+    card.addEventListener("keydown", (event) => {
+      if (
+        event.target === card &&
+        (event.key === "Enter" || event.key === " ")
+      ) {
+        event.preventDefault();
+        togglePack();
+      }
+    });
+    permanentPackView.list.append(card);
+  });
 }
 
 function resolveTargetDate(mode, banner, bannerDateType, customTargetDate) {
@@ -933,9 +1099,53 @@ function initializeEventIncomeModule() {
     });
 }
 
+function initializePermanentPacksModule() {
+  permanentPackView = {
+    redDiamondRate: document.querySelector("#red-diamond-per-pull"),
+    list: document.querySelector("#permanent-pack-list"),
+    error: document.querySelector("#permanent-pack-error"),
+  };
+
+  permanentPackView.redDiamondRate.addEventListener(
+    "input",
+    renderPermanentPacks,
+  );
+
+  Promise.all([
+    loadPermanentPacks(),
+    loadPermanentPackRules(),
+    loadResourceTypes(),
+  ])
+    .then(([loadedPacks, loadedRules, loadedResourceTypes]) => {
+      permanentPacks = loadedPacks;
+      permanentPackRules = loadedRules;
+      permanentPackResourceTypes = loadedResourceTypes;
+      permanentPackView.redDiamondRate.value =
+        String(permanentPackRules.defaultRedDiamondPerPull);
+      permanentPackState.quantities = Object.fromEntries(
+        permanentPacks.map((pack) => [pack.id, 0]),
+      );
+
+      if (permanentPacks.length === 0) {
+        permanentPackView.error.textContent =
+          "没有可用的新人和等级礼包数据。";
+        return;
+      }
+
+      renderPermanentPacks();
+    })
+    .catch(() => {
+      permanentPacks = [];
+      permanentPackView.list.replaceChildren();
+      permanentPackView.error.textContent =
+        "新人和等级礼包数据加载失败，请使用本地开发服务器打开页面。";
+    });
+}
+
 if (typeof document !== "undefined") {
   initializeDateModule();
   initializeInventoryModule();
   initializeFreeDailyAccumulationModule();
   initializeEventIncomeModule();
+  initializePermanentPacksModule();
 }

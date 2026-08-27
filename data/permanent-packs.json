@@ -1,3 +1,209 @@
 {
-  "packs": []
+  "packs": [
+    {
+      "id": "颜料连续礼包",
+      "name": "颜料连续礼包",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "diamond": 60, "common_paint": 7 },
+      "note": "原规则为连续7天每天获得老荷兰颜料×1，新人和等级礼包计算中按最终总资源7个处理"
+    },
+    {
+      "id": "新手限定礼包",
+      "name": "新手限定礼包",
+      "price": 6,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 3 }
+    },
+    {
+      "id": "10级颜料礼盒",
+      "name": "10级颜料礼盒",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "diamond": 120, "common_paint": 2 }
+    },
+    {
+      "id": "20级颜料礼盒",
+      "name": "20级颜料礼盒",
+      "price": 6,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "diamond": 60, "common_paint": 1 }
+    },
+    {
+      "id": "30级颜料礼盒",
+      "name": "30级颜料礼盒",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "diamond": 120, "common_paint": 2 }
+    },
+    {
+      "id": "95级颜料礼包",
+      "name": "95级颜料礼包",
+      "price": 45,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 10 }
+    },
+    {
+      "id": "100级颜料礼包",
+      "name": "100级颜料礼包",
+      "price": 45,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 10 }
+    },
+    {
+      "id": "105级颜料礼包",
+      "name": "105级颜料礼包",
+      "price": 45,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 10 }
+    },
+    {
+      "id": "画材礼盒·2期",
+      "name": "画材礼盒·2期",
+      "price": 18,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 3, "diamond": 60 }
+    },
+    {
+      "id": "新手画材礼盒",
+      "name": "新手画材礼盒",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 2, "diamond": 30 }
+    },
+    {
+      "id": "颜料周礼包",
+      "name": "颜料周礼包",
+      "price": 6,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": {
+        "type": "weekly",
+        "limit": 1
+      },
+      "contents": { "common_paint": 1 },
+      "note": "每周限购1次"
+    },
+    {
+      "id": "40级颜料礼盒",
+      "name": "40级颜料礼盒",
+      "price": 18,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 3 }
+    },
+    {
+      "id": "45级颜料礼盒",
+      "name": "45级颜料礼盒",
+      "price": 18,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 3 }
+    },
+    {
+      "id": "50级颜料礼盒",
+      "name": "50级颜料礼盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "55级颜料礼盒",
+      "name": "55级颜料礼盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "60级颜料礼盒",
+      "name": "60级颜料礼盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "65级颜料礼盒",
+      "name": "65级颜料礼盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "70级颜料礼盒",
+      "name": "70级颜料礼盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "75级颜料礼盒",
+      "name": "75级颜料礼盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "80级颜料礼包",
+      "name": "80级颜料礼包",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "85级颜料礼包",
+      "name": "85级颜料礼包",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "90级颜料礼包",
+      "name": "90级颜料礼包",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 5 }
+    },
+    {
+      "id": "颜料收纳箱",
+      "name": "颜料收纳箱",
+      "price": 198,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 2,
+      "contents": { "common_paint": 30 }
+    },
+    {
+      "id": "颜料组合",
+      "name": "颜料组合",
+      "price": 98,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 3,
+      "contents": { "common_paint": 14, "diamond": 80 }
+    },
+    {
+      "id": "艺术家画材礼盒",
+      "name": "艺术家画材礼盒",
+      "price": 68,
+      "countsTowardLimitedRecharge": true,
+      "purchaseLimit": 1,
+      "contents": { "common_paint": 10 }
+    }
+  ]
 }

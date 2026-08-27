@@ -6,6 +6,7 @@ const RESOURCE_INSTANCES_PATH = "data/resources/sample-resources.json";
 const CONSTANTS_PATH = "data/constants.json";
 const EVENT_TYPES_PATH = "data/events/event-types.json";
 const EVENTS_PATH = "data/events/sample-event.json";
+const PERMANENT_PACKS_PATH = "data/permanent-packs.json";
 
 function isValidCalendarDate(value) {
   if (typeof value !== "string") {
@@ -360,4 +361,95 @@ async function loadEvents(path = EVENTS_PATH) {
     eventIds.add(event.id);
     return true;
   });
+}
+
+function isValidPermanentPack(pack) {
+  const hasFixedPurchaseLimit =
+    Number.isSafeInteger(pack?.purchaseLimit) && pack.purchaseLimit >= 1;
+  const hasWeeklyPurchaseRule =
+    pack?.purchaseRule !== null &&
+    typeof pack?.purchaseRule === "object" &&
+    pack.purchaseRule.type === "weekly" &&
+    Number.isSafeInteger(pack.purchaseRule.limit) &&
+    pack.purchaseRule.limit >= 1;
+
+  return (
+    pack !== null &&
+    typeof pack === "object" &&
+    typeof pack.id === "string" &&
+    pack.id.trim() !== "" &&
+    typeof pack.name === "string" &&
+    pack.name.trim() !== "" &&
+    typeof pack.price === "number" &&
+    Number.isFinite(pack.price) &&
+    pack.price > 0 &&
+    typeof pack.countsTowardLimitedRecharge === "boolean" &&
+    hasFixedPurchaseLimit !== hasWeeklyPurchaseRule &&
+    pack.contents !== null &&
+    typeof pack.contents === "object" &&
+    !Array.isArray(pack.contents) &&
+    Object.keys(pack.contents).length > 0 &&
+    Object.entries(pack.contents).every(
+      ([resourceId, amount]) =>
+        resourceId.trim() !== "" &&
+        Number.isSafeInteger(amount) &&
+        amount > 0,
+    ) &&
+    (pack.note === undefined || typeof pack.note === "string")
+  );
+}
+
+async function loadPermanentPacks(path = PERMANENT_PACKS_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取新人和等级礼包数据：${path}`);
+  }
+
+  const data = await response.json();
+  const packs = Array.isArray(data.packs)
+    ? data.packs.filter(isValidPermanentPack)
+    : [];
+  const packIds = new Set();
+
+  return packs.filter((pack) => {
+    if (packIds.has(pack.id)) {
+      return false;
+    }
+
+    packIds.add(pack.id);
+    return true;
+  });
+}
+
+function isValidPermanentPackRules(rules) {
+  return (
+    rules !== null &&
+    typeof rules === "object" &&
+    Number.isFinite(rules.diamondPerPull) &&
+    rules.diamondPerPull > 0 &&
+    Number.isFinite(rules.commonPaintPerPull) &&
+    rules.commonPaintPerPull > 0 &&
+    Number.isFinite(rules.defaultRedDiamondPerPull) &&
+    rules.defaultRedDiamondPerPull > 0 &&
+    Number.isFinite(rules.maximumDisplayedPricePerPull) &&
+    rules.maximumDisplayedPricePerPull > 0
+  );
+}
+
+async function loadPermanentPackRules(path = CONSTANTS_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取常量数据：${path}`);
+  }
+
+  const data = await response.json();
+  const rules = data.constants?.permanentPackCalculation;
+
+  if (!isValidPermanentPackRules(rules)) {
+    throw new Error("新人和等级礼包计算规则无效。");
+  }
+
+  return rules;
 }

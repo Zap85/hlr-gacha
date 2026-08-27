@@ -37,6 +37,12 @@
         "rewardDay": 23,
         "commonPaint": 1
       }
+    },
+    "permanentPackCalculation": {
+      "diamondPerPull": 150,
+      "commonPaintPerPull": 1,
+      "defaultRedDiamondPerPull": 70.71,
+      "maximumDisplayedPricePerPull": 10
     }
   }
 }

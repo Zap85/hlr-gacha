@@ -185,6 +185,20 @@
         </div>
         <p id="event-income-error" class="date-error" aria-live="polite"></p>
       </section>
+
+      <section aria-labelledby="permanent-packs-section-title">
+        <details class="pack-disclosure">
+          <summary id="permanent-packs-section-title">五、新人和等级礼包</summary>
+          <div class="pack-disclosure-content">
+            <label>
+              红钻理论折算率（红钻 / 抽）
+              <input id="red-diamond-per-pull" type="number" min="0.01" step="0.01" value="70.71">
+            </label>
+            <div id="permanent-pack-list" class="permanent-pack-grid"></div>
+            <p id="permanent-pack-error" class="date-error" aria-live="polite"></p>
+          </div>
+        </details>
+      </section>
     </main>
 
     <script defer src="js/calculator.js"></script>

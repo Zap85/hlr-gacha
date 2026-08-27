@@ -370,3 +370,116 @@ function calculateSelectedEventIncome(
     selectedResources,
   };
 }
+
+function calculatePermanentPackValue(pack, redDiamondPerPull, rules) {
+  if (
+    typeof redDiamondPerPull !== "number" ||
+    !Number.isFinite(redDiamondPerPull) ||
+    redDiamondPerPull <= 0
+  ) {
+    return { valid: false, error: "红钻理论折算率必须大于 0。" };
+  }
+
+  const theoreticalPulls =
+    (pack.contents.diamond ?? 0) / rules.diamondPerPull +
+    (pack.contents.common_paint ?? 0) / rules.commonPaintPerPull +
+    (pack.contents.red_diamond ?? 0) / redDiamondPerPull;
+
+  if (theoreticalPulls <= 0) {
+    return { valid: false, error: `礼包“${pack.name}”没有抽卡资源。` };
+  }
+
+  return {
+    valid: true,
+    error: null,
+    pack,
+    theoreticalPulls,
+    pricePerPull: pack.price / theoreticalPulls,
+  };
+}
+
+function getPermanentPackPurchaseLimit(pack) {
+  return pack.purchaseLimit ?? pack.purchaseRule?.limit ?? 0;
+}
+
+function getDisplayablePermanentPacks(packs, redDiamondPerPull, rules) {
+  const calculatedPacks = [];
+
+  for (const pack of packs) {
+    const result = calculatePermanentPackValue(
+      pack,
+      redDiamondPerPull,
+      rules,
+    );
+
+    if (!result.valid) {
+      return { valid: false, error: result.error, packs: [] };
+    }
+
+    if (result.pricePerPull < rules.maximumDisplayedPricePerPull) {
+      calculatedPacks.push(result);
+    }
+  }
+
+  calculatedPacks.sort(
+    (left, right) => left.pricePerPull - right.pricePerPull,
+  );
+
+  return {
+    valid: true,
+    error: null,
+    packs: calculatedPacks,
+  };
+}
+
+function calculatePermanentPackPurchases(packs, quantities) {
+  const resources = {};
+  const purchases = [];
+  let totalPrice = 0;
+
+  for (const pack of packs) {
+    const quantity = quantities[pack.id] ?? 0;
+    const purchaseLimit = getPermanentPackPurchaseLimit(pack);
+
+    if (
+      !Number.isSafeInteger(quantity) ||
+      quantity < 0 ||
+      quantity > purchaseLimit
+    ) {
+      return {
+        valid: false,
+        error: `礼包“${pack.name}”购买数量无效。`,
+      };
+    }
+
+    if (quantity === 0) {
+      continue;
+    }
+
+    const purchasedContents = {};
+
+    Object.entries(pack.contents).forEach(([resourceId, amount]) => {
+      const totalAmount = amount * quantity;
+      purchasedContents[resourceId] = totalAmount;
+      resources[resourceId] = (resources[resourceId] ?? 0) + totalAmount;
+    });
+
+    const purchasePrice = pack.price * quantity;
+    totalPrice += purchasePrice;
+    purchases.push({
+      id: pack.id,
+      quantity,
+      price: purchasePrice,
+      contents: purchasedContents,
+      countsTowardLimitedRecharge: pack.countsTowardLimitedRecharge,
+    });
+  }
+
+  return {
+    valid: true,
+    error: null,
+    totalPrice,
+    resources,
+    purchases,
+  };
+}

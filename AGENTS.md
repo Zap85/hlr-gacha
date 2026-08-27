@@ -104,7 +104,18 @@
 - 所有实际人民币付费项目的数据模型必须支持 `price` 和 `countsTowardLimitedRecharge`；`price` 表示人民币价格，`countsTowardLimitedRecharge` 表示是否计入限时累充，后者仅供内部计算，不要求前端展示。
 - 当前仅确认月卡的 `countsTowardLimitedRecharge` 为 `true`；其他付费项目必须在各自数据中明确，不得自行推断。
 - 不得建立独立的“氪金.md”或重复的中央氪金表；`price`、`countsTowardLimitedRecharge` 等属性必须跟随具体付费项目保存。
-- 常驻礼包归入 permanent pack 数据；活动礼包以及季卡、年卡、猫条等限时购买行为归入 event pack / 活动礼包数据。不得在多个数据文件中重复维护同一付费项目的价格或累充属性。
+- 新人和等级礼包归入 permanent pack 数据；活动礼包以及季卡、年卡、猫条等限时购买行为归入 event pack / 活动礼包数据。不得在多个数据文件中重复维护同一付费项目的价格或累充属性。
+
+## 新人和等级礼包约束
+
+- “新人和等级礼包”只处理固定人民币礼包，不包含活动礼包、钻石/红钻礼包或免费活动收入。
+- permanent pack 数据保存礼包事实，包括稳定 `id`、`name`、`price`、固定 `purchaseLimit` 或结构化 `purchaseRule`、`contents` 和 `countsTowardLimitedRecharge`；不得保存 `theoreticalPulls` 或 `pricePerPull`。
+- 理论抽数按钻石 150 = 1 抽、老荷兰颜料 1 = 1 抽、红钻除以用户设置的理论折算率计算；默认折算率为 70.71 红钻/抽，仅用于理论性价比，不得触发玩家红钻的实际转换。
+- `theoreticalPulls` 和 `pricePerPull` 允许小数，内部必须保留完整精度；前端按 `pricePerPull` 从低到高排序。
+- 礼包默认未购买。整张卡片点亮时购买、再次点击时取消；固定 `purchaseLimit: 1` 不显示数量调整，固定 `purchaseLimit > 1` 点亮后从 1 份开始并允许在 1 至上限间调整，取消后数量归零。
+- 颜料周礼包必须通过 `purchaseRule` 保留“每周限购 1 次”的语义，不得等同为整个计算区间固定 `purchaseLimit: 1`；按区间计算可购次数须等待明确的后续实现。
+- 购买结果按 `contents × 实际购买数量` 增加资源，并按 `price × 实际购买数量` 累计人民币金额；`countsTowardLimitedRecharge` 仅作为内部属性保存，当前不得据此实现限时累充统计。
+- 模块默认折叠；折叠仅影响展示，不得改变购买状态或计算结果。
 
 ## 技术原则
 
