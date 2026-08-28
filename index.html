@@ -54,25 +54,12 @@
               按结束日
             </label>
           </fieldset>
-
-          <p>卡池日期范围：<output id="banner-date-range">—</output></p>
         </div>
 
         <label id="custom-target-field" class="target-fields" hidden>
           自定义目标日期
           <input id="custom-target-date" type="date" disabled>
         </label>
-
-        <dl class="date-summary">
-          <div>
-            <dt>实际目标日期</dt>
-            <dd><output id="actual-target-date">—</output></dd>
-          </div>
-          <div>
-            <dt>计算天数</dt>
-            <dd><output id="calculated-days">—</output></dd>
-          </div>
-        </dl>
 
         <p id="date-error" class="date-error" aria-live="polite"></p>
       </section>
@@ -92,21 +79,8 @@
         </div>
 
         <h3>限定老荷兰</h3>
-        <div class="limited-inventory-controls">
-          <label>
-            选择限定老荷兰
-            <select id="limited-resource-select" disabled>
-              <option value="">正在加载资源实例…</option>
-            </select>
-          </label>
-          <label>
-            数量
-            <input id="limited-resource-amount" type="number" min="0" step="1" value="0" disabled>
-          </label>
-          <button id="add-limited-resource" type="button" disabled>添加</button>
-        </div>
-        <p id="limited-add-error" class="inventory-error" aria-live="polite"></p>
         <div id="limited-inventory-list" class="inventory-fields"></div>
+        <p id="limited-inventory-message">正在加载资源实例…</p>
         <p id="dynamic-inventory-error" class="inventory-error" aria-live="polite"></p>
       </section>
 

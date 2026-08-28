@@ -20,6 +20,14 @@ const parseInventoryAmount = vm.runInContext(
   "parseInventoryAmount",
   calculatorContext,
 );
+const getApplicableLimitedPaintResources = vm.runInContext(
+  "getApplicableLimitedPaintResources",
+  calculatorContext,
+);
+const calculatePreConversionSummary = vm.runInContext(
+  "calculatePreConversionSummary",
+  calculatorContext,
+);
 
 assert.equal(parseInventoryAmount("").amount, 0);
 assert.equal(parseInventoryAmount("0").amount, 0);
@@ -34,6 +42,10 @@ const resourceTypeData = JSON.parse(
 const resourceInstanceData = JSON.parse(
   readProjectFile(path.join("data", "resources", "test-resources.json")),
 );
+const bannerData = JSON.parse(
+  readProjectFile(path.join("data", "banners", "test-banner.json")),
+);
+const indexHtml = readProjectFile("index.html");
 const appContext = vm.createContext({ parseInventoryAmount });
 
 vm.runInContext(readProjectFile(path.join("js", "app.js")), appContext);
@@ -58,14 +70,6 @@ const updateInventoryAmount = vm.runInContext(
   "updateInventoryAmount",
   appContext,
 );
-const addLimitedInventoryResource = vm.runInContext(
-  "addLimitedInventoryResource",
-  appContext,
-);
-const removeLimitedInventoryResource = vm.runInContext(
-  "removeLimitedInventoryResource",
-  appContext,
-);
 const inventoryState = vm.runInContext("inventoryState", appContext);
 
 initializeFixedInventoryState(resourceTypeData.resourceTypes);
@@ -82,7 +86,14 @@ assert.equal(inventoryState.fixedResources.red_diamond, 0);
 assert.equal(inventoryState.fixedResources.common_paint, 0);
 assert.deepEqual(Object.keys(inventoryState.timedPaintTotals), ["timed_paint"]);
 assert.equal(inventoryState.timedPaintTotals.timed_paint, 0);
-assert.deepEqual(Object.keys(inventoryState.limitedPaintResources), []);
+assert.deepEqual(Object.keys(inventoryState.limitedPaintResources), [
+  "通票老荷兰",
+  "灵魂老荷兰",
+  "甜蜜老荷兰",
+]);
+assert.equal(inventoryState.limitedPaintResources["通票老荷兰"], 0);
+assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], 0);
+assert.equal(inventoryState.limitedPaintResources["甜蜜老荷兰"], 0);
 
 updateFixedInventoryAmount("diamond", "120");
 updateFixedInventoryAmount("red_diamond", "30");
@@ -100,31 +111,147 @@ updateFixedInventoryAmount("common_paint", "-1");
 assert.equal(inventoryState.fixedResources.common_paint, 8);
 
 updateInventoryAmount("timedPaintTotals", "timed_paint", "6");
-const addResult = addLimitedInventoryResource("通票老荷兰", "3");
-const duplicateResult = addLimitedInventoryResource("通票老荷兰", "7");
-const invalidAddResult = addLimitedInventoryResource("灵魂老荷兰", "-1");
+const limitedResult = updateInventoryAmount(
+  "limitedPaintResources",
+  "通票老荷兰",
+  "3",
+);
+const invalidLimitedResult = updateInventoryAmount(
+  "limitedPaintResources",
+  "灵魂老荷兰",
+  "-1",
+);
 
 assert.equal(inventoryState.timedPaintTotals.timed_paint, 6);
-assert.equal(addResult.valid, true);
-assert.equal(duplicateResult.valid, false);
-assert.equal(invalidAddResult.valid, false);
+assert.equal(limitedResult.valid, true);
+assert.equal(invalidLimitedResult.valid, false);
 assert.equal(inventoryState.limitedPaintResources["通票老荷兰"], 3);
-assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], undefined);
+assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], 0);
 assert.equal(inventoryState.fixedResources.diamond, 120);
 
-addLimitedInventoryResource("灵魂老荷兰", "2");
 updateInventoryAmount("limitedPaintResources", "通票老荷兰", "5");
+updateInventoryAmount("limitedPaintResources", "灵魂老荷兰", "2");
+updateInventoryAmount("limitedPaintResources", "甜蜜老荷兰", "3");
 updateInventoryAmount("limitedPaintResources", "灵魂老荷兰", "invalid");
 updateInventoryAmount("timedPaintTotals", "timed_paint", "1.5");
 
 assert.equal(inventoryState.limitedPaintResources["通票老荷兰"], 5);
 assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], 2);
-assert.equal(inventoryState.limitedPaintResources["甜蜜老荷兰"], undefined);
+assert.equal(inventoryState.limitedPaintResources["甜蜜老荷兰"], 3);
 assert.equal(inventoryState.timedPaintTotals.timed_paint, 6);
 
-assert.equal(removeLimitedInventoryResource("通票老荷兰"), true);
-assert.equal(inventoryState.limitedPaintResources["通票老荷兰"], undefined);
-assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], 2);
+const limitedResources = resourceInstanceData.resources.filter(
+  (resource) => resource.category === "limited_paint",
+);
+const manorBanner = bannerData.find((banner) => banner.id === "庄园诡戏");
+const birthdayBanner = bannerData.find((banner) => banner.id === "罗夏生日");
+const noLimitedPaintBanner = bannerData.find(
+  (banner) => banner.id === "六周年庆典",
+);
+
+assert.deepEqual(
+  Array.from(
+    getApplicableLimitedPaintResources(
+      limitedResources,
+      "banner",
+      manorBanner,
+    ),
+    (resource) => resource.id,
+  ),
+  ["灵魂老荷兰"],
+);
+assert.deepEqual(
+  Array.from(
+    getApplicableLimitedPaintResources(
+      limitedResources,
+      "banner",
+      birthdayBanner,
+    ),
+    (resource) => resource.id,
+  ),
+  ["甜蜜老荷兰"],
+);
+assert.equal(
+  getApplicableLimitedPaintResources(
+    limitedResources,
+    "banner",
+    noLimitedPaintBanner,
+  ).length,
+  0,
+);
+assert.equal(
+  getApplicableLimitedPaintResources(
+    limitedResources,
+    "custom",
+    birthdayBanner,
+  ).length,
+  0,
+);
+assert.equal(
+  getApplicableLimitedPaintResources(
+    limitedResources,
+    "banner",
+    { id: "其他卡池", name: "庄园诡戏", tags: [] },
+  ).length,
+  0,
+  "不得使用显示名称匹配",
+);
+
+const multipleMatches = getApplicableLimitedPaintResources(
+  [
+    ...limitedResources,
+    {
+      id: "生日限定测试资源",
+      name: "生日限定测试资源",
+      category: "limited_paint",
+      applicability: { type: "banner_tag", values: ["birthday"] },
+    },
+  ],
+  "banner",
+  birthdayBanner,
+);
+assert.equal(multipleMatches.length, 2);
+
+const summaryOptions = {
+  resourceSources: [inventoryState.limitedPaintResources],
+  resourceInstances: resourceInstanceData.resources,
+  targetDate: "2026-09-02",
+};
+assert.equal(
+  calculatePreConversionSummary({
+    ...summaryOptions,
+    targetBanner: manorBanner,
+  }).resources.limited_paint,
+  2,
+);
+assert.equal(
+  calculatePreConversionSummary({
+    ...summaryOptions,
+    targetBanner: birthdayBanner,
+  }).resources.limited_paint,
+  3,
+);
+assert.equal(
+  calculatePreConversionSummary({
+    ...summaryOptions,
+    targetBanner: noLimitedPaintBanner,
+  }).resources.limited_paint,
+  0,
+);
+assert.equal(
+  calculatePreConversionSummary({
+    ...summaryOptions,
+    targetBanner: null,
+  }).resources.limited_paint,
+  0,
+);
+
+assert.match(indexHtml, /id="limited-inventory-list"/);
+assert.match(indexHtml, /id="limited-inventory-message"/);
+assert.doesNotMatch(
+  indexHtml,
+  /limited-resource-select|add-limited-resource|limited-add-error/,
+);
 
 const requestedPaths = [];
 const loaderContext = vm.createContext({

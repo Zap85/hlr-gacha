@@ -5,7 +5,7 @@ const inventoryState = {
   timedPaintTotals: {},
   limitedPaintResources: {},
 };
-const limitedResourceIds = new Set();
+let updateLimitedInventoryForTarget = () => {};
 const dateSelectionState = {
   currentDate: "",
   targetDate: "",
@@ -122,11 +122,12 @@ function initializeTimedInventoryState(resourceTypes) {
 
 function initializeLimitedInventoryState(resources) {
   inventoryState.limitedPaintResources = {};
-  limitedResourceIds.clear();
 
   resources
     .filter((resource) => resource.category === "limited_paint")
-    .forEach((resource) => limitedResourceIds.add(resource.id));
+    .forEach((resource) => {
+      inventoryState.limitedPaintResources[resource.id] = 0;
+    });
 
   return inventoryState;
 }
@@ -155,33 +156,6 @@ function updateInventoryAmount(inventoryGroup, resourceId, value) {
 
 function updateFixedInventoryAmount(resourceId, value) {
   return updateInventoryAmount("fixedResources", resourceId, value);
-}
-
-function addLimitedInventoryResource(resourceId, value) {
-  if (!limitedResourceIds.has(resourceId)) {
-    return { valid: false, amount: null, error: "请选择限定老荷兰。" };
-  }
-
-  if (
-    Object.prototype.hasOwnProperty.call(
-      inventoryState.limitedPaintResources,
-      resourceId,
-    )
-  ) {
-    return { valid: false, amount: null, error: "该限定老荷兰已添加。" };
-  }
-
-  const result = parseInventoryAmount(value);
-
-  if (result.valid) {
-    inventoryState.limitedPaintResources[resourceId] = result.amount;
-  }
-
-  return result;
-}
-
-function removeLimitedInventoryResource(resourceId) {
-  return delete inventoryState.limitedPaintResources[resourceId];
 }
 
 function getInventoryResourceSources() {
@@ -989,6 +963,10 @@ function resolveTargetDate(mode, banner, bannerDateType, customTargetDate) {
   return bannerDateType === "end" ? banner.endDate : banner.startDate;
 }
 
+function formatBannerOptionLabel(banner) {
+  return `${banner.name} ${banner.startDate} ～ ${banner.endDate}`;
+}
+
 function initializeDateModule() {
   const currentDateInput = document.querySelector("#current-date");
   const targetModeInputs = document.querySelectorAll(
@@ -999,11 +977,8 @@ function initializeDateModule() {
   const bannerDateTypeInputs = document.querySelectorAll(
     'input[name="banner-date-type"]',
   );
-  const bannerDateRange = document.querySelector("#banner-date-range");
   const customTargetField = document.querySelector("#custom-target-field");
   const customTargetDateInput = document.querySelector("#custom-target-date");
-  const actualTargetDate = document.querySelector("#actual-target-date");
-  const calculatedDays = document.querySelector("#calculated-days");
   const dateError = document.querySelector("#date-error");
 
   let banners = [];
@@ -1033,13 +1008,11 @@ function initializeDateModule() {
     dateSelectionState.targetDate = targetDate;
     dateSelectionState.targetMode = mode;
     dateSelectionState.targetBanner = mode === "banner" ? banner : null;
+    updateLimitedInventoryForTarget();
     updateFreeDailyAccumulationResult();
     updateEventIncomeResult();
     updateEventPacksResult();
     updatePreConversionSummaryResult();
-
-    actualTargetDate.textContent = targetDate || "—";
-    calculatedDays.textContent = "—";
 
     if (mode === "banner" && isBannerDataLoading) {
       dateError.textContent = "正在加载卡池数据。";
@@ -1058,15 +1031,7 @@ function initializeDateModule() {
       return;
     }
 
-    calculatedDays.textContent = `${result.days} 天`;
     dateError.textContent = "";
-  }
-
-  function updateBannerDateRange() {
-    const banner = getSelectedBanner();
-    bannerDateRange.textContent = banner
-      ? `${banner.startDate} ～ ${banner.endDate}`
-      : "—";
   }
 
   function updateTargetMode() {
@@ -1096,7 +1061,7 @@ function initializeDateModule() {
     banners.forEach((banner) => {
       const option = document.createElement("option");
       option.value = banner.id;
-      option.textContent = banner.name;
+      option.textContent = formatBannerOptionLabel(banner);
       bannerSelect.append(option);
     });
   }
@@ -1108,7 +1073,6 @@ function initializeDateModule() {
     input.addEventListener("change", updateDateResult);
   });
   bannerSelect.addEventListener("change", () => {
-    updateBannerDateRange();
     updateDateResult();
   });
   currentDateInput.addEventListener("input", updateDateResult);
@@ -1130,7 +1094,6 @@ function initializeDateModule() {
     .finally(() => {
       isBannerDataLoading = false;
       renderBannerOptions();
-      updateBannerDateRange();
       updateDateResult();
     });
 }
@@ -1142,24 +1105,18 @@ function initializeInventoryModule() {
   const timedInventoryFields = document.querySelector(
     "#timed-inventory-fields",
   );
-  const limitedResourceSelect = document.querySelector(
-    "#limited-resource-select",
-  );
-  const limitedResourceAmount = document.querySelector(
-    "#limited-resource-amount",
-  );
-  const addLimitedResourceButton = document.querySelector(
-    "#add-limited-resource",
-  );
   const limitedInventoryList = document.querySelector(
     "#limited-inventory-list",
   );
+  const limitedInventoryMessage = document.querySelector(
+    "#limited-inventory-message",
+  );
   const inventoryError = document.querySelector("#inventory-error");
-  const limitedAddError = document.querySelector("#limited-add-error");
   const dynamicInventoryError = document.querySelector(
     "#dynamic-inventory-error",
   );
   let limitedResourceDefinitions = [];
+  let limitedResourcesLoading = true;
 
   function renderInventoryFields(
     container,
@@ -1250,108 +1207,87 @@ function initializeInventoryModule() {
     );
   }
 
-  function getApplicabilityDescription(resource) {
-    const values = resource.applicability.values.join("、");
-    return resource.applicability.type === "banner_id"
-      ? `适用卡池：${values}`
-      : `适用卡池标签：${values}`;
-  }
+  function renderLimitedInventoryList() {
+    limitedInventoryList.replaceChildren();
+    limitedInventoryMessage.textContent = "";
 
-  function renderLimitedResourceOptions() {
-    const availableResources = limitedResourceDefinitions.filter(
-      (resource) =>
-        !Object.prototype.hasOwnProperty.call(
-          inventoryState.limitedPaintResources,
-          resource.id,
-        ),
-    );
-
-    limitedResourceSelect.replaceChildren();
-
-    if (availableResources.length === 0) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "没有可添加的限定老荷兰";
-      limitedResourceSelect.append(option);
-      limitedResourceSelect.disabled = true;
-      limitedResourceAmount.disabled = true;
-      addLimitedResourceButton.disabled = true;
+    if (limitedResourcesLoading) {
+      limitedInventoryMessage.textContent = "正在加载资源实例…";
       return;
     }
 
-    availableResources.forEach((resource) => {
-      const option = document.createElement("option");
-      option.value = resource.id;
-      option.textContent = resource.name;
-      limitedResourceSelect.append(option);
-    });
+    if (dateSelectionState.targetMode !== "banner") {
+      limitedInventoryMessage.textContent =
+        "限定老荷兰仅在按卡池计算时可填写";
+      return;
+    }
 
-    limitedResourceSelect.disabled = false;
-    limitedResourceAmount.disabled = false;
-    addLimitedResourceButton.disabled = false;
-  }
+    if (!dateSelectionState.targetBanner) {
+      limitedInventoryMessage.textContent =
+        "请选择有效的卡池后填写限定老荷兰";
+      return;
+    }
 
-  function renderLimitedInventoryList() {
-    limitedInventoryList.replaceChildren();
-
-    Object.entries(inventoryState.limitedPaintResources).forEach(
-      ([resourceId, amount], index) => {
-        const resource = limitedResourceDefinitions.find(
-          (item) => item.id === resourceId,
-        );
-        const item = document.createElement("div");
-        const label = document.createElement("label");
-        const labelText = document.createElement("span");
-        const description = document.createElement("span");
-        const input = document.createElement("input");
-        const error = document.createElement("small");
-        const removeButton = document.createElement("button");
-        const inputId = `limited-inventory-${index}`;
-        const errorId = `${inputId}-error`;
-
-        item.className = "inventory-item";
-        label.className = "inventory-field";
-        labelText.textContent = resource.name;
-        description.className = "inventory-description";
-        description.textContent = getApplicabilityDescription(resource);
-        input.id = inputId;
-        input.type = "number";
-        input.min = "0";
-        input.step = "1";
-        input.value = amount ?? "";
-        input.setAttribute("aria-describedby", errorId);
-        error.id = errorId;
-        error.className = "inventory-input-error";
-        removeButton.type = "button";
-        removeButton.textContent = "删除";
-
-        input.addEventListener("input", () => {
-          const result = updateInventoryAmount(
-            "limitedPaintResources",
-            resourceId,
-            input.value,
-          );
-
-          error.textContent = result.error ?? "";
-          input.setAttribute("aria-invalid", String(!result.valid));
-
-          if (result.valid) {
-            updatePreConversionSummaryResult();
-          }
-        });
-        removeButton.addEventListener("click", () => {
-          removeLimitedInventoryResource(resourceId);
-          renderLimitedInventoryList();
-          renderLimitedResourceOptions();
-          updatePreConversionSummaryResult();
-        });
-
-        label.append(labelText, description, input, error);
-        item.append(label, removeButton);
-        limitedInventoryList.append(item);
-      },
+    const applicableResources = getApplicableLimitedPaintResources(
+      limitedResourceDefinitions,
+      dateSelectionState.targetMode,
+      dateSelectionState.targetBanner,
     );
+
+    if (applicableResources.length === 0) {
+      limitedInventoryMessage.textContent =
+        "当前卡池没有已配置的限定老荷兰";
+      return;
+    }
+
+    applicableResources.forEach((resource, index) => {
+      const label = document.createElement("label");
+      const labelText = document.createElement("span");
+      const description = document.createElement("span");
+      const input = document.createElement("input");
+      const error = document.createElement("small");
+      const inputId = `limited-inventory-${index}`;
+      const errorId = `${inputId}-error`;
+
+      label.className = "inventory-field";
+      labelText.textContent = resource.name;
+      description.className = "inventory-description";
+      description.textContent =
+        `适用卡池：${dateSelectionState.targetBanner.name}`;
+      input.id = inputId;
+      input.type = "number";
+      input.min = "0";
+      input.step = "1";
+      input.value = String(
+        inventoryState.limitedPaintResources[resource.id] ?? 0,
+      );
+      input.dataset.inventoryGroup = "limitedPaintResources";
+      input.dataset.resourceId = resource.id;
+      input.setAttribute("aria-describedby", errorId);
+      error.id = errorId;
+      error.className = "inventory-input-error";
+
+      input.addEventListener("input", () => {
+        const result = updateInventoryAmount(
+          "limitedPaintResources",
+          resource.id,
+          input.value,
+        );
+
+        error.textContent = result.error ?? "";
+        input.setAttribute("aria-invalid", String(!result.valid));
+
+        if (result.valid) {
+          updatePreConversionSummaryResult();
+        }
+      });
+
+      label.append(labelText, description, input, error);
+      limitedInventoryList.append(label);
+    });
   }
+
+  updateLimitedInventoryForTarget = renderLimitedInventoryList;
 
   function initializeLimitedInventory(resources) {
     limitedResourceDefinitions = resources.filter(
@@ -1359,27 +1295,8 @@ function initializeInventoryModule() {
     );
 
     initializeLimitedInventoryState(limitedResourceDefinitions);
-    renderLimitedResourceOptions();
     renderLimitedInventoryList();
   }
-
-  addLimitedResourceButton.addEventListener("click", () => {
-    const result = addLimitedInventoryResource(
-      limitedResourceSelect.value,
-      limitedResourceAmount.value,
-    );
-
-    limitedAddError.textContent = result.error ?? "";
-
-    if (!result.valid) {
-      return;
-    }
-
-    limitedResourceAmount.value = "0";
-    renderLimitedInventoryList();
-    renderLimitedResourceOptions();
-    updatePreConversionSummaryResult();
-  });
 
   loadResourceTypes()
     .then((resourceTypes) => {
@@ -1397,15 +1314,15 @@ function initializeInventoryModule() {
   loadResourceInstances()
     .then((resources) => {
       summaryResourceInstances = resources;
+      limitedResourcesLoading = false;
       initializeLimitedInventory(resources);
       dynamicInventoryError.textContent = "";
       updatePreConversionSummaryResult();
     })
     .catch(() => {
-      limitedResourceSelect.replaceChildren();
-      limitedResourceSelect.disabled = true;
-      limitedResourceAmount.disabled = true;
-      addLimitedResourceButton.disabled = true;
+      limitedResourcesLoading = false;
+      limitedInventoryList.replaceChildren();
+      limitedInventoryMessage.textContent = "";
       dynamicInventoryError.textContent =
         "动态资源加载失败，请使用本地开发服务器打开页面。";
     });

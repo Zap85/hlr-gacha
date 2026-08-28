@@ -18,8 +18,17 @@ const appContext = vm.createContext({});
 vm.runInContext(readProjectFile(path.join("js", "app.js")), appContext);
 
 const resolveTargetDate = vm.runInContext("resolveTargetDate", appContext);
+const formatBannerOptionLabel = vm.runInContext(
+  "formatBannerOptionLabel",
+  appContext,
+);
+const indexHtml = readProjectFile("index.html");
 
 assert.equal(banner.name, "6周年庆典");
+assert.equal(
+  formatBannerOptionLabel(banner),
+  "6周年庆典 2026-09-26 ～ 2026-10-12",
+);
 assert.equal(resolveTargetDate("banner", banner, "start", ""), "2026-09-26");
 assert.equal(resolveTargetDate("banner", banner, "end", ""), "2026-10-12");
 
@@ -30,6 +39,10 @@ assert.equal(
 assert.equal(
   resolveTargetDate("banner", banner, "start", "2026-11-01"),
   "2026-09-26",
+);
+assert.doesNotMatch(
+  indexHtml,
+  /卡池日期范围|实际目标日期|计算天数|banner-date-range|actual-target-date|calculated-days/,
 );
 
 const requestedPaths = [];

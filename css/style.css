@@ -82,22 +82,6 @@ fieldset {
   padding: 0.75rem 1rem 1rem;
 }
 
-.date-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 1.25rem 0 0;
-}
-
-.date-summary div {
-  padding: 0.75rem;
-  border: 1px solid #ccc;
-}
-
-.date-summary dd {
-  margin: 0.25rem 0 0;
-}
-
 .date-error {
   min-height: 1.5em;
   margin-bottom: 0;
@@ -118,30 +102,6 @@ fieldset {
 .inventory-description {
   color: #555;
   font-size: 0.9rem;
-}
-
-.limited-inventory-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 1rem;
-}
-
-.limited-inventory-controls label {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.limited-inventory-controls button,
-.inventory-item > button {
-  min-height: 2.5rem;
-}
-
-.inventory-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.75rem;
 }
 
 .inventory-input-error,
@@ -372,9 +332,7 @@ fieldset {
 }
 
 .calculator-sidebar .date-fields,
-.calculator-sidebar .date-summary,
 .calculator-sidebar .inventory-fields,
-.calculator-sidebar .limited-inventory-controls,
 .calculator-sidebar .accumulation-summary {
   grid-template-columns: 1fr;
 }
@@ -406,15 +364,7 @@ fieldset {
     grid-template-columns: 1fr;
   }
 
-  .date-summary {
-    grid-template-columns: 1fr;
-  }
-
   .inventory-fields {
-    grid-template-columns: 1fr;
-  }
-
-  .limited-inventory-controls {
     grid-template-columns: 1fr;
   }
 

@@ -835,6 +835,22 @@ function isResourceInstanceAvailable(resource, targetDate, targetBanner) {
   return false;
 }
 
+function getApplicableLimitedPaintResources(
+  resources,
+  targetMode,
+  targetBanner,
+) {
+  if (targetMode !== "banner" || !targetBanner) {
+    return [];
+  }
+
+  return resources.filter(
+    (resource) =>
+      resource.category === "limited_paint" &&
+      isResourceInstanceAvailable(resource, "", targetBanner),
+  );
+}
+
 function calculatePreConversionSummary({
   resourceSources = [],
   resourceAdjustments = {},
