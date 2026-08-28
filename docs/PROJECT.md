@@ -23,17 +23,21 @@ hlr gacha/
 │  └─ data-loader.js
 ├─ data/
 │  ├─ constants.json
-│  ├─ permanent-packs.json
 │  ├─ packs/
-│  │  └─ event-packs/
+│  │  ├─ permanent-packs.json
+│  │  ├─ event-packs/
+│  │  └─ currency-packs/
 │  ├─ events/
 │  │  ├─ event-types.json
-│  │  └─ sample-event.json
+│  │  ├─ event.template.json
+│  │  └─ test-event.json
 │  ├─ banners/
-│  │  └─ sample-banner.json
+│  │  ├─ banner.template.json
+│  │  └─ test-banner.json
 │  └─ resources/
 │     ├─ resource-types.json
-│     └─ sample-resources.json
+│     ├─ resource.template.json
+│     └─ test-resources.json
 ├─ docs/
 │  └─ PROJECT.md
 └─ AGENTS.md
@@ -44,7 +48,11 @@ hlr gacha/
 - 页面层：`index.html` 提供基础结构，`style.css` 提供样式，`app.js` 负责用户交互和页面更新。
 - 计算层：`calculator.js` 负责纯计算，不直接操作页面。
 - 数据加载层：`data-loader.js` 负责加载和基础校验 JSON 数据，不负责业务计算。
-- 数据层：`data/*.json` 保存游戏规则、活动、卡池和礼包等数据。
+- 数据层：`data/` 下的 JSON 保存游戏规则、活动、卡池和礼包等数据。
+
+数据文件名表达其维护职责：`*-types.json` 保存可复用规则或类型定义，`*.template.json` 是人工或 AI 维护数据时参考的结构模板且不参与业务加载，`test-*.json` 是当前开发阶段使用的真实数据实例。`sample-*` 不再承担模板语义。
+
+礼包统一维护在 `data/packs/`。固定人民币礼包使用 `permanent-packs.json`；Event Pack 与 Currency Pack 分别放在 `event-packs/` 和 `currency-packs/`，并都按一次活动一个 JSON 文件维护。
 
 ### Banner 与 Event 数据边界
 
@@ -59,7 +67,7 @@ Banner 表示卡池及其开池、结束时间，Event 表示活动及其活动�
 
 ### Event、Event Type 与 Event Pack
 
-Event 表示活动本身及其免费活动收入，Event Pack 表示人民币限时礼包，两者独立维护，避免把免费奖励与付费购买混入同一实体。`data/events/event-types.json` 保存可复用的活动类型模板；具体 Event 通过 `type` 引用模板，并只在 `incomeAdjustment` 中记录该次活动相对模板的差异。`data/events/sample-event.json` 仅提供开发测试用 Event 实例，不定义活动类型。
+Event 表示活动本身及其免费活动收入，Event Pack 表示人民币限时礼包，两者独立维护，避免把免费奖励与付费购买混入同一实体。`data/events/event-types.json` 保存可复用的活动类型模板；具体 Event 通过 `type` 引用模板，并只在 `incomeAdjustment` 中记录该次活动相对模板的差异。`data/events/test-event.json` 仅提供开发阶段使用的具体 Event 实例，不定义活动类型。
 
 实际活动收入由对应 type 的模板值与 Event 的 `incomeAdjustment` 相加得到。模板和调整都按 `available`、`complete` 两个阶段组织；调整允许正数、0 和负数，未出现的资源按 0 处理。这样模板规则只维护一次，同时仍能表达单次活动的例外。
 
@@ -77,7 +85,7 @@ Banner 的 `id` 是数据之间使用的稳定引用键，`name` 是可修改的
 
 ## 资源模型设计
 
-资源类型定义与具体资源实例分开维护。`data/resources/resource-types.json` 统一定义五种资源类型及其管理方式；`data/resources/sample-resources.json` 保存测试用的限时批次和限定资源实例。这样新增具体资源时只需增加数据，不需要修改资源类型定义或核心计算代码。
+资源类型定义与具体资源实例分开维护。`data/resources/resource-types.json` 统一定义五种资源类型及其管理方式；`data/resources/test-resources.json` 保存开发阶段使用的限时批次和限定资源实例。这样新增具体资源时只需增加数据，不需要修改资源类型定义或核心计算代码。
 
 ### 固定资源
 
@@ -97,7 +105,7 @@ Banner 的 `id` 是数据之间使用的稳定引用键，`name` 是可修改的
 
 ```json
 {
-  "id": "timed-paint-sample-1",
+  "id": "timed-paint-test-1",
   "category": "timed_paint",
   "availableFrom": "2026-09-20",
   "expiresAt": "2026-10-15"
@@ -138,7 +146,7 @@ Event 仍使用已有的 `targetDate` 阶段判断，不改为逐日交集。Eve
 
 ## 日常收入模块与付费数据归属
 
-“三、日常收入”统一计算免费日常收入，以及用户选择启用后的长期周期性权益。月卡、季卡、年卡和猫条的持续收益放在同一模块内，可以复用同一日期区间与真实日历规则；各项目的购买行为则按其长期或限时属性分别归属，避免把周期收入和礼包购买混为一体。
+“日常收入”统一计算免费日常收入，以及用户选择启用后的长期周期性权益。月卡、季卡、年卡和猫条的持续收益放在同一模块内，可以复用同一日期区间与真实日历规则；各项目的购买行为则按其长期或限时属性分别归属，避免把周期收入和礼包购买混为一体。
 
 日常收入是当前唯一确认的基础区间例外。统一开关 `todayIncomeClaimed`（“今日收入已领取”）默认开启：开启时按 `(currentDate, targetDate]` 计算，关闭时按 `[currentDate, targetDate]` 计算。该开关一次控制当天的每日任务、每周分享、签到、月末奖励以及月卡、年卡、猫条等日常持续收益，避免为同一天收入建立彼此矛盾的多个确认状态。
 
@@ -152,7 +160,7 @@ Event 仍使用已有的 `targetDate` 阶段判断，不改为逐日交集。Eve
 
 ## 新人和等级礼包
 
-“五、新人和等级礼包”负责固定人民币礼包的选择、数量和购买结果，不包含活动礼包、钻石/红钻礼包或免费活动收入。模块默认折叠，折叠状态只控制页面展示，不改变已选择的礼包、购买数量或计算结果。
+“新人和等级礼包”负责固定人民币礼包的选择、数量和购买结果，不包含活动礼包、钻石/红钻礼包或免费活动收入。数据存放在 `data/packs/permanent-packs.json`。模块默认折叠，折叠状态只控制页面展示，不改变已选择的礼包、购买数量或计算结果。
 
 permanent pack 数据只保存礼包事实：`id`、`name`、`price`、固定 `purchaseLimit` 或结构化 `purchaseRule`、`contents`、`countsTowardLimitedRecharge`。理论抽数和理论元/抽不写入礼包数据，而是由程序根据内容实时计算，避免折算规则或用户参数变化后还要同步修改每条礼包数据。
 
@@ -164,27 +172,26 @@ permanent pack 数据只保存礼包事实：`id`、`name`、`price`、固定 `p
 
 ## 活动礼包
 
-“六、活动礼包”是默认折叠的一级模块，并允许同时包含多个 Event Pack 二级分组。数据统一放在 `data/packs/event-packs/`，每次礼包 Event 使用一个独立 JSON 文件，便于按活动维护和增删。Event 描述活动本身及免费活动收入，Event Pack 描述对应的人民币限时礼包；二者是独立实体，只通过稳定的 `eventId` 关联。Event 可以没有礼包，Event Pack 也不与 Banner 强制绑定。
+“活动礼包”是默认折叠的一级模块，并允许同时包含多个 Event Pack 二级分组。数据统一放在 `data/packs/event-packs/`，每次礼包 Event 使用一个独立 JSON 文件，便于按活动维护和增删。Event 描述活动本身及免费活动收入，Event Pack 描述对应的人民币限时礼包；二者是独立实体，只通过稳定的 `eventId` 关联。Event 可以没有礼包，Event Pack 也不与 Banner 强制绑定。
 
 礼包事实数据按用途区分：`contents` 是参与攒抽计算的资源，`otherContents` 只记录或展示非抽卡奖励，`deferredRewards` 记录延期发放内容且不自动进入当前抽卡资源。同一礼包中重复出现的同一种抽卡资源可以合并，避免计算时产生无意义的重复项。
 
 购买规则需要保留各自语义：`total` 表示整个 Event Pack 有效期的总限购，`daily` 表示每日限购；后者的实际可购买次数按基础计算区间与礼包有效期的交集计算。`prerequisites` 使用稳定 pack id 表达购买前置，`pull_count` trigger 表达抽数触发，两者不能混用；当前阶段只展示抽数触发条件，不自动进行解锁判断。
 
-## 手动调整与兑换前汇总
+## 钻石 / 红钻礼包
 
-“其他”保留为不依赖结构化来源的手动资源调整层，允许正数、0 和负数，也不修改资源 JSON。这里的限时、限定老荷兰由用户自行确认对当前目标有效，因此不再重复进行有效期或适用卡池判断。
+Currency Pack 表示使用游戏内钻石或红钻购买的限时礼包，与使用人民币购买的 Event Pack 是不同实体。它通过稳定 `eventId` 关联 Event，同时维护自己的 `startDate` 和 `endDate`；只有用户基础计算区间与该有效期存在交集时才进入可选范围。支付资源记录在 `cost` 中，当前支持 `diamond` 和 `red_diamond`，不使用人民币礼包的 `price` 或 `countsTowardLimitedRecharge`，因此购买不增加 RMB，也不计入限时累充。
 
-“资源总计（兑换前）”统一汇总库存、日常收入、活动收入、新人和等级礼包、活动礼包及手动调整，并保持 `diamond`、`red_diamond`、`common_paint`、`timed_paint`、`limited_paint` 相互独立。该结果位于任何红钻转换、钻石转抽、礼包消费或最终抽数折算之前；手动负调整造成的中间负数会原样保留，不自动归零。RMB 仅汇总实际人民币购买，游戏内钻石或红钻消费不属于 RMB。
+Currency Pack 的 `contents`、`otherContents`、`prerequisites`、`trigger` 和 `deferredRewards` 沿用 Event Pack 的语义。同一活动的钻石礼包与红钻礼包保存在同一个文件中，前端根据 `cost.resourceId` 分组。钻石礼包不计算性价比；红钻礼包根据抽卡资源计算 `theoreticalPulls`，并以 `redDiamondCost / theoreticalPulls` 得到实际的单抽红钻价。这个消费效率与新人和等级礼包中用于理论估值的 70.71 红钻/抽参数相互独立。
 
-当前仍支持直接双击 `index.html` 打开页面，因此暂不使用 `fetch` 读取本地 JSON。正式接入数据加载功能应等到项目使用本地开发服务器之后。
+计算层保留 Currency Pack 购买前的资源状态，并在其上扣除 `cost`、加入 `contents`，派生当前资源状态。购买不得使钻石或红钻余额为负，也不会自动进行红钻转钻石或钻石转抽数。
 
-## 未来计划
+## 个性化调整与资源总计
 
-- 支持活动 JSON
-- 支持卡池 JSON
-- 支持新人和等级礼包 JSON
-- 使用 AI 辅助生成活动数据
-- 建立数据校验工具
-- 与 HLR Wiki 进行数据层合作
+用户可见的“个性化调整”是不依赖结构化来源的手动资源调整层，允许正数、0 和负数，不修改资源 JSON，也不影响 RMB 或限时累充。这里的限时、限定老荷兰由用户自行确认对当前目标有效，因此不再重复进行有效期或适用卡池判断；`otherState` 等既有内部命名无需随 UI 名称重构。
 
-当前正式功能尚未开始开发。
+用户界面只展示一套权威的“资源总计”。内部购买前汇总仍将库存、日常收入、活动收入、新人和等级礼包、活动礼包及个性化调整合并，并保持各资源类型独立；随后继续应用 Currency Pack 的消耗与奖励，得到当前资源状态。用户修改任一已实现来源后，资源总计即时更新。手动负调整产生的中间负数不自动归零；RMB 总计和限时累充金额仍只受人民币购买项目影响。
+
+## 页面信息架构
+
+页面用户可见模块不使用中文数字编号。桌面端采用双栏：左侧依次承载日期与计算方式、库存资源和资源总计，集中放置基础设置、初始资源与权威实时结果；右侧依次承载日常收入、活动收入、新人和等级礼包、活动礼包、钻石 / 红钻礼包、个性化调整及后续计算模块，集中放置计算过程与用户选择。窄屏可以恢复为相同顺序的单栏布局。内部可以保留多个计算阶段，但各模块不重复展示完整的处理后资源。

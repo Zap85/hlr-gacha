@@ -10,7 +10,7 @@ function readProjectFile(relativePath) {
 }
 
 const packData = JSON.parse(
-  readProjectFile(path.join("data", "permanent-packs.json")),
+  readProjectFile(path.join("data", "packs", "permanent-packs.json")),
 );
 const constantsData = JSON.parse(
   readProjectFile(path.join("data", "constants.json")),
@@ -51,7 +51,7 @@ assert.equal(
   ),
   true,
 );
-assert.match(indexHtml, /<summary[^>]*>五、新人和等级礼包<\/summary>/);
+assert.match(indexHtml, /<summary[^>]*>新人和等级礼包<\/summary>/);
 assert.match(indexHtml, /<details class="pack-disclosure">/);
 assert.doesNotMatch(indexHtml, /<details class="pack-disclosure" open>/);
 
@@ -193,7 +193,7 @@ const loaderContext = vm.createContext({
     return {
       ok: true,
       json: async () =>
-        requestedPath === "data/permanent-packs.json"
+        requestedPath === "data/packs/permanent-packs.json"
           ? packData
           : constantsData,
     };
@@ -221,7 +221,7 @@ const loadPermanentPackRules = vm.runInContext(
   assert.equal(loadedPacks.length, 25);
   assert.equal(loadedRules.defaultRedDiamondPerPull, 70.71);
   assert.deepEqual(requestedPaths, [
-    "data/permanent-packs.json",
+    "data/packs/permanent-packs.json",
     "data/constants.json",
   ]);
   console.log("permanent packs: data, value, and purchase tests passed");

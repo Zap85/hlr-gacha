@@ -1,0 +1,18 @@
+{
+  "events": [
+    {
+      "id": "示例活动ID",
+      "name": "示例活动名称",
+      "type": "复刻活动",
+      "startDate": "2026-01-01",
+      "endDate": "2026-01-10",
+      "status": "current",
+      "isRerun": false,
+      "incomeAdjustment": {
+        "available": {},
+        "complete": {}
+      },
+      "exchanges": []
+    }
+  ]
+}

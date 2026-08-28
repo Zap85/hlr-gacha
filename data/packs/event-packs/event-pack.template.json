@@ -1,0 +1,29 @@
+{
+  "id": "示例活动礼包",
+  "name": "示例活动礼包",
+  "eventId": "示例活动ID",
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-10",
+  "packs": [
+    {
+      "id": "示例礼包",
+      "name": "示例礼包",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "common_paint",
+          "amount": 3
+        }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    }
+  ]
+}

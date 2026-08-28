@@ -73,6 +73,28 @@ const otherState = {
 };
 let preConversionSummaryView = null;
 let summaryResourceInstances = [];
+const preConversionSummaryState = {
+  resources: {
+    diamond: 0,
+    red_diamond: 0,
+    common_paint: 0,
+    timed_paint: 0,
+    limited_paint: 0,
+  },
+  rmbTotal: 0,
+  limitedRechargeRmb: 0,
+};
+const currencyPackPurchaseState = {
+  purchases: {},
+  costs: { diamond: 0, red_diamond: 0 },
+  rewards: {},
+  resources: { ...preConversionSummaryState.resources },
+};
+let currencyPackView = null;
+let currencyPacks = [];
+let currencyPackResourceNames = new Map();
+let currencyPacksLoading = true;
+let currencyPacksLoadError = "";
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -170,6 +192,18 @@ function getInventoryResourceSources() {
   ];
 }
 
+function renderCurrentResourceTotals(resources) {
+  if (!preConversionSummaryView) {
+    return;
+  }
+
+  Object.entries(preConversionSummaryView.resources).forEach(
+    ([resourceId, output]) => {
+      output.textContent = String(resources[resourceId] ?? 0);
+    },
+  );
+}
+
 function updatePreConversionSummaryResult() {
   if (!preConversionSummaryView) {
     return;
@@ -210,15 +244,17 @@ function updatePreConversionSummaryResult() {
     return;
   }
 
-  Object.entries(preConversionSummaryView.resources).forEach(
-    ([resourceId, output]) => {
-      output.textContent = String(result.resources[resourceId]);
-    },
-  );
+  preConversionSummaryState.resources = result.resources;
+  preConversionSummaryState.rmbTotal = result.rmbTotal;
+  preConversionSummaryState.limitedRechargeRmb =
+    result.limitedRechargeRmb;
+
+  renderCurrentResourceTotals(result.resources);
   preConversionSummaryView.rmbTotal.textContent = `¥${result.rmbTotal}`;
   preConversionSummaryView.limitedRechargeRmb.textContent =
     `¥${result.limitedRechargeRmb}`;
   preConversionSummaryView.error.textContent = "";
+  updateCurrencyPacksResult();
 }
 
 function updateFreeDailyAccumulationResult() {
@@ -1639,6 +1675,324 @@ function initializePreConversionSummaryModule() {
   updatePreConversionSummaryResult();
 }
 
+function formatCurrencyPackRewards(pack) {
+  const rewards = [
+    ...pack.contents.map(
+      ({ resourceId, amount }) =>
+        `${currencyPackResourceNames.get(resourceId) ?? resourceId}×${amount}`,
+    ),
+    ...pack.otherContents.map(({ name, amount }) => `${name}×${amount}`),
+  ];
+
+  return rewards.length > 0 ? rewards.join("，") : "无";
+}
+
+function createCurrencyPackCard(
+  currencyPack,
+  valueResult,
+  purchases,
+) {
+  const { pack } = valueResult;
+  const purchase = purchases[pack.id];
+  const maximumQuantity = getCurrencyPackMaximumQuantity(
+    pack,
+    currencyPack,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+  const card = document.createElement("article");
+  const header = document.createElement("header");
+  const heading = document.createElement("h4");
+  const cost = document.createElement("span");
+  const rewards = document.createElement("p");
+  const purchaseLimit = document.createElement("p");
+  const costName = pack.cost.resourceId === "diamond" ? "钻石" : "红钻";
+
+  card.className = "income-card event-pack-card currency-pack-card";
+  card.classList.toggle("is-selected", purchase.selected);
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-pressed", String(purchase.selected));
+  heading.textContent = pack.name;
+  cost.className = "permanent-pack-price";
+  cost.textContent = `${pack.cost.amount} ${costName}`;
+  header.append(heading, cost);
+  rewards.textContent = `奖励：${formatCurrencyPackRewards(pack)}`;
+  purchaseLimit.textContent =
+    pack.purchaseRule.type === "daily"
+      ? `每日限购 ${pack.purchaseRule.limit} 份`
+      : `活动期间限购 ${pack.purchaseRule.limit} 份`;
+  card.append(header, rewards, purchaseLimit);
+
+  if (pack.cost.resourceId === "red_diamond") {
+    const theoreticalPulls = document.createElement("p");
+    const redDiamondPerPull = document.createElement("p");
+
+    theoreticalPulls.textContent =
+      `理论抽数：${valueResult.theoreticalPulls}`;
+    redDiamondPerPull.textContent =
+      `单抽红钻价：${valueResult.redDiamondPerPull === null
+        ? "—"
+        : valueResult.redDiamondPerPull.toFixed(2)}`;
+    card.append(theoreticalPulls, redDiamondPerPull);
+  }
+
+  pack.prerequisites.forEach((prerequisiteId) => {
+    const prerequisite = document.createElement("p");
+    prerequisite.textContent = `需先购买：${prerequisiteId}`;
+    card.append(prerequisite);
+  });
+
+  if (pack.trigger?.type === "pull_count") {
+    const trigger = document.createElement("p");
+    trigger.textContent = `抽卡达到 ${pack.trigger.value} 次后触发`;
+    card.append(trigger);
+  }
+
+  pack.deferredRewards.forEach((reward) => {
+    const deferredReward = document.createElement("p");
+    const note = reward.note ? `；${reward.note}` : "";
+    deferredReward.textContent =
+      `购买后可获得：${reward.name}×${reward.amount}${note}`;
+    card.append(deferredReward);
+  });
+
+  if (maximumQuantity > 1 && purchase.selected) {
+    const quantityLabel = document.createElement("label");
+    const quantityInput = document.createElement("input");
+
+    quantityLabel.className = "permanent-pack-quantity";
+    quantityLabel.append("购买数量", quantityInput);
+    quantityInput.type = "number";
+    quantityInput.min = "1";
+    quantityInput.max = String(maximumQuantity);
+    quantityInput.step = "1";
+    quantityInput.value = String(purchase.quantity);
+    quantityInput.addEventListener("input", () => {
+      const result = updateCurrencyPackPurchase(
+        currencyPacks,
+        currencyPackPurchaseState.purchases,
+        currencyPack.id,
+        pack.id,
+        true,
+        Number(quantityInput.value),
+        preConversionSummaryState.resources,
+        dateSelectionState.currentDate,
+        dateSelectionState.targetDate,
+        dateSelectionState.targetBanner,
+        summaryResourceInstances,
+      );
+
+      if (!result.valid) {
+        currencyPackView.error.textContent = result.error;
+        return;
+      }
+
+      currencyPackPurchaseState.purchases = result.purchaseState;
+      updateCurrencyPacksResult();
+    });
+    card.append(quantityLabel);
+  } else {
+    const quantity = document.createElement("p");
+    quantity.textContent = `购买数量：${purchase.quantity}`;
+    card.append(quantity);
+  }
+
+  function togglePack() {
+    const result = updateCurrencyPackPurchase(
+      currencyPacks,
+      currencyPackPurchaseState.purchases,
+      currencyPack.id,
+      pack.id,
+      !purchase.selected,
+      1,
+      preConversionSummaryState.resources,
+      dateSelectionState.currentDate,
+      dateSelectionState.targetDate,
+      dateSelectionState.targetBanner,
+      summaryResourceInstances,
+    );
+
+    if (!result.valid) {
+      currencyPackView.error.textContent = result.error;
+      return;
+    }
+
+    currencyPackPurchaseState.purchases = result.purchaseState;
+    updateCurrencyPacksResult();
+  }
+
+  card.addEventListener("click", (event) => {
+    if (event.target.closest("input, label")) {
+      return;
+    }
+
+    togglePack();
+  });
+  card.addEventListener("keydown", (event) => {
+    if (
+      event.target === card &&
+      (event.key === "Enter" || event.key === " ")
+    ) {
+      event.preventDefault();
+      togglePack();
+    }
+  });
+
+  return card;
+}
+
+function renderCurrencyPackGroups(displayableCurrencyPacks) {
+  currencyPackView.groups.replaceChildren();
+
+  displayableCurrencyPacks.forEach((currencyPack, index) => {
+    const group = document.createElement("section");
+    const heading = document.createElement("h3");
+    const headingId = `currency-pack-group-${index}`;
+    const groups = groupCurrencyPackItems(
+      currencyPack,
+      dateSelectionState.targetDate,
+      dateSelectionState.targetBanner,
+      summaryResourceInstances,
+    );
+    const purchases =
+      currencyPackPurchaseState.purchases[currencyPack.id];
+
+    group.className = "event-pack-group currency-pack-group";
+    group.setAttribute("aria-labelledby", headingId);
+    heading.id = headingId;
+    heading.textContent = currencyPack.name;
+    group.append(heading);
+
+    [
+      ["diamond", "钻石礼包"],
+      ["red_diamond", "红钻礼包"],
+    ].forEach(([resourceId, label]) => {
+      const typeGroup = document.createElement("section");
+      const typeHeading = document.createElement("h4");
+      const list = document.createElement("div");
+
+      typeGroup.className = "currency-pack-type-group";
+      typeHeading.textContent = label;
+      list.className = "event-pack-card-grid";
+      groups[resourceId].forEach((valueResult) => {
+        list.append(
+          createCurrencyPackCard(currencyPack, valueResult, purchases),
+        );
+      });
+      typeGroup.append(typeHeading, list);
+      group.append(typeGroup);
+    });
+
+    currencyPackView.groups.append(group);
+  });
+}
+
+function updateCurrencyPacksResult() {
+  if (!currencyPackView) {
+    return;
+  }
+
+  currencyPackView.groups.replaceChildren();
+  currencyPackView.error.textContent = "";
+  currencyPackPurchaseState.costs = { diamond: 0, red_diamond: 0 };
+  currencyPackPurchaseState.rewards = {};
+  currencyPackPurchaseState.resources = {
+    ...preConversionSummaryState.resources,
+  };
+  renderCurrentResourceTotals(currencyPackPurchaseState.resources);
+
+  if (currencyPacksLoading) {
+    currencyPackView.message.textContent =
+      "正在加载钻石 / 红钻礼包数据。";
+    return;
+  }
+
+  if (currencyPacksLoadError) {
+    currencyPackView.message.textContent = "";
+    currencyPackView.error.textContent = currencyPacksLoadError;
+    return;
+  }
+
+  const displayableCurrencyPacks = getDisplayableCurrencyPacks(
+    currencyPacks,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+
+  if (displayableCurrencyPacks.length === 0) {
+    currencyPackView.message.textContent =
+      "当前计算区间没有可购买的钻石 / 红钻礼包。";
+    return;
+  }
+
+  const result = calculateCurrencyPackPurchaseSummary(
+    currencyPacks,
+    currencyPackPurchaseState.purchases,
+    preConversionSummaryState.resources,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+    dateSelectionState.targetBanner,
+    summaryResourceInstances,
+  );
+  currencyPackPurchaseState.purchases = result.purchaseState;
+  currencyPackPurchaseState.costs = result.costs;
+  currencyPackPurchaseState.rewards = result.rewards;
+  currencyPackPurchaseState.resources = result.resources;
+  renderCurrentResourceTotals(result.resources);
+  currencyPackView.message.textContent = "";
+  renderCurrencyPackGroups(displayableCurrencyPacks);
+
+  if (!result.valid) {
+    currencyPackView.error.textContent = result.error;
+    return;
+  }
+
+}
+
+function initializeCurrencyPacksModule() {
+  currencyPackView = {
+    groups: document.querySelector("#currency-pack-groups"),
+    message: document.querySelector("#currency-packs-message"),
+    error: document.querySelector("#currency-packs-error"),
+  };
+
+  Promise.all([
+    loadCurrencyPacks(),
+    loadResourceTypes(),
+    loadResourceInstances(),
+  ])
+    .then(([loadedCurrencyPacks, resourceTypes, resourceInstances]) => {
+      currencyPacks = loadedCurrencyPacks;
+      summaryResourceInstances = resourceInstances;
+      currencyPackResourceNames = new Map([
+        ...resourceTypes.map((resourceType) => [
+          resourceType.id,
+          resourceType.name,
+        ]),
+        ...resourceInstances
+          .filter((resource) => typeof resource.name === "string")
+          .map((resource) => [resource.id, resource.name]),
+      ]);
+      currencyPackPurchaseState.purchases =
+        createCurrencyPackPurchaseState(currencyPacks);
+      currencyPacksLoadError =
+        currencyPacks.length === 0
+          ? "没有可用的钻石 / 红钻礼包数据。"
+          : "";
+    })
+    .catch(() => {
+      currencyPacks = [];
+      currencyPackPurchaseState.purchases = {};
+      currencyPacksLoadError =
+        "钻石 / 红钻礼包数据加载失败，请使用本地开发服务器打开页面。";
+    })
+    .finally(() => {
+      currencyPacksLoading = false;
+      updateCurrencyPacksResult();
+    });
+}
+
 if (typeof document !== "undefined") {
   initializeDateModule();
   initializeInventoryModule();
@@ -1648,4 +2002,5 @@ if (typeof document !== "undefined") {
   initializeEventPacksModule();
   initializeOtherModule();
   initializePreConversionSummaryModule();
+  initializeCurrencyPacksModule();
 }

@@ -10,7 +10,7 @@ function readProjectFile(relativePath) {
 }
 
 const banners = JSON.parse(
-  readProjectFile(path.join("data", "banners", "sample-banner.json")),
+  readProjectFile(path.join("data", "banners", "test-banner.json")),
 );
 const banner = banners.find((item) => item.id === "六周年庆典");
 const appContext = vm.createContext({});
@@ -65,7 +65,7 @@ const loadBanners = vm.runInContext("loadBanners", loaderContext);
   const validBanners = await loadBanners();
   const invalidBanners = await loadBanners(["invalid-banner.json"]);
 
-  assert.equal(requestedPaths[0], "data/banners/sample-banner.json");
+  assert.equal(requestedPaths[0], "data/banners/test-banner.json");
   assert.equal(validBanners.length, 5);
   assert.equal(validBanners[0].id, "六周年庆典");
   assert.deepEqual(Array.from(validBanners[2].tags), ["birthday"]);

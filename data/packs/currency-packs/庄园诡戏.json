@@ -1,0 +1,154 @@
+{
+  "id": "庄园诡戏钻石红钻礼包",
+  "name": "庄园诡戏",
+  "eventId": "庄园诡戏",
+  "startDate": "2026-08-26",
+  "endDate": "2026-09-02",
+  "packs": [
+    {
+      "id": "星空溯尘礼包",
+      "name": "星空溯尘礼包",
+      "cost": {
+        "resourceId": "diamond",
+        "amount": 48
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 10
+      },
+      "contents": [],
+      "otherContents": [
+        {
+          "name": "星空溯尘",
+          "amount": 1
+        }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园诡戏贴纸包",
+      "name": "庄园诡戏贴纸包",
+      "cost": {
+        "resourceId": "diamond",
+        "amount": 360
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [],
+      "otherContents": [
+        {
+          "name": "庄园诡戏贴纸包1",
+          "amount": 1
+        },
+        {
+          "name": "庄园诡戏贴纸包2",
+          "amount": 1
+        }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园颜料特惠包",
+      "name": "庄园颜料特惠包",
+      "cost": {
+        "resourceId": "red_diamond",
+        "amount": 680
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "灵魂老荷兰",
+          "amount": 12
+        }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园颜料大礼包",
+      "name": "庄园颜料大礼包",
+      "cost": {
+        "resourceId": "red_diamond",
+        "amount": 880
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "灵魂老荷兰",
+          "amount": 15
+        }
+      ],
+      "otherContents": [
+        {
+          "name": "金币",
+          "amount": 20000
+        },
+        {
+          "name": "香浓拿铁",
+          "amount": 1
+        }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园特殊颜料盒I",
+      "name": "庄园特殊颜料盒I",
+      "cost": {
+        "resourceId": "red_diamond",
+        "amount": 1980
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "common_paint",
+          "amount": 28
+        }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园颜料套装",
+      "name": "庄园颜料套装",
+      "cost": {
+        "resourceId": "red_diamond",
+        "amount": 450
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "common_paint",
+          "amount": 6
+        }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    }
+  ]
+}

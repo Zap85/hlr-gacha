@@ -26,7 +26,7 @@ const parseResourceAdjustment = vm.runInContext(
 );
 const resourceInstances = JSON.parse(
   readProjectFile(
-    path.join("data", "resources", "sample-resources.json"),
+    path.join("data", "resources", "test-resources.json"),
   ),
 ).resources;
 const indexHtml = readProjectFile("index.html");
@@ -43,8 +43,8 @@ const indexHtml = readProjectFile("index.html");
     new RegExp(`<input id="${id}"[^>]*value="0"`),
   );
 });
-assert.match(indexHtml, /七、其他/);
-assert.match(indexHtml, /八、资源总计（兑换前）/);
+assert.match(indexHtml, /个性化调整/);
+assert.match(indexHtml, /资源总计/);
 assert.doesNotMatch(indexHtml, /额外氪金金额|other-rmb-amount/);
 assert.doesNotMatch(indexHtml, /id="pre-conversion-[^"]*pull/);
 

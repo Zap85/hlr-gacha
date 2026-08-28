@@ -18,10 +18,10 @@ const resourceTypeData = JSON.parse(
   readProjectFile(path.join("data", "resources", "resource-types.json")),
 );
 const resourceInstanceData = JSON.parse(
-  readProjectFile(path.join("data", "resources", "sample-resources.json")),
+  readProjectFile(path.join("data", "resources", "test-resources.json")),
 );
 const eventData = JSON.parse(
-  readProjectFile(path.join("data", "events", "sample-event.json")),
+  readProjectFile(path.join("data", "events", "test-event.json")),
 );
 const packs = eventPackData.packs;
 const indexHtml = readProjectFile("index.html");
@@ -41,7 +41,7 @@ assert.equal(
   packs.every((pack) => pack.countsTowardLimitedRecharge === true),
   true,
 );
-assert.match(indexHtml, /<summary[^>]*>六、活动礼包<\/summary>/);
+assert.match(indexHtml, /<summary[^>]*>活动礼包<\/summary>/);
 assert.match(indexHtml, /<details class="pack-disclosure event-packs-disclosure">/);
 assert.doesNotMatch(
   indexHtml,
@@ -441,7 +441,7 @@ loaderContext.fetch = async (requestedPath) => {
 
   const dataByPath = {
     "data/resources/resource-types.json": resourceTypeData,
-    "data/resources/sample-resources.json": resourceInstanceData,
+    "data/resources/test-resources.json": resourceInstanceData,
     "data/packs/event-packs/庄园诡戏.json": eventPackData,
     "event-pack-one.json": eventPackData,
     "event-pack-two.json": secondEventPack,

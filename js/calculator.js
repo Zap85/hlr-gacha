@@ -932,3 +932,405 @@ function calculatePreConversionSummary({
     limitedRechargeRmb,
   };
 }
+
+function isCurrencyPackVisible(currentDate, targetDate, currencyPack) {
+  const currentTimestamp = parseCalendarDate(currentDate);
+  const targetTimestamp = parseCalendarDate(targetDate);
+  const startTimestamp = parseCalendarDate(currencyPack.startDate);
+  const endTimestamp = parseCalendarDate(currencyPack.endDate);
+
+  return (
+    currentTimestamp !== null &&
+    targetTimestamp !== null &&
+    startTimestamp !== null &&
+    endTimestamp !== null &&
+    currentTimestamp <= targetTimestamp &&
+    startTimestamp <= endTimestamp &&
+    Math.max(currentTimestamp, startTimestamp) <=
+      Math.min(targetTimestamp, endTimestamp)
+  );
+}
+
+function getDisplayableCurrencyPacks(
+  currencyPacks,
+  currentDate,
+  targetDate,
+) {
+  return currencyPacks.filter((currencyPack) =>
+    isCurrencyPackVisible(currentDate, targetDate, currencyPack),
+  );
+}
+
+function calculateCurrencyPackValue(
+  pack,
+  targetDate,
+  targetBanner,
+  resourceInstances,
+) {
+  if (pack.cost.resourceId !== "red_diamond") {
+    return {
+      pack,
+      theoreticalPulls: null,
+      redDiamondPerPull: null,
+    };
+  }
+
+  const resourceInstancesById = new Map(
+    resourceInstances.map((resource) => [resource.id, resource]),
+  );
+  let theoreticalPulls = 0;
+
+  pack.contents.forEach(({ resourceId, amount }) => {
+    if (resourceId === "common_paint") {
+      theoreticalPulls += amount;
+      return;
+    }
+
+    const resource = resourceInstancesById.get(resourceId);
+
+    if (
+      resource?.category === "limited_paint" &&
+      isResourceInstanceAvailable(resource, targetDate, targetBanner)
+    ) {
+      theoreticalPulls += amount;
+    }
+  });
+
+  return {
+    pack,
+    theoreticalPulls,
+    redDiamondPerPull:
+      theoreticalPulls > 0
+        ? pack.cost.amount / theoreticalPulls
+        : null,
+  };
+}
+
+function groupCurrencyPackItems(
+  currencyPack,
+  targetDate,
+  targetBanner,
+  resourceInstances,
+) {
+  const groups = {
+    diamond: [],
+    red_diamond: [],
+  };
+
+  currencyPack.packs.forEach((pack) => {
+    groups[pack.cost.resourceId].push(
+      calculateCurrencyPackValue(
+        pack,
+        targetDate,
+        targetBanner,
+        resourceInstances,
+      ),
+    );
+  });
+  groups.red_diamond.sort((left, right) => {
+    if (left.redDiamondPerPull === null) {
+      return right.redDiamondPerPull === null ? 0 : 1;
+    }
+
+    if (right.redDiamondPerPull === null) {
+      return -1;
+    }
+
+    return left.redDiamondPerPull - right.redDiamondPerPull;
+  });
+
+  return groups;
+}
+
+function getCurrencyPackMaximumQuantity(
+  pack,
+  currencyPack,
+  currentDate,
+  targetDate,
+) {
+  if (!isCurrencyPackVisible(currentDate, targetDate, currencyPack)) {
+    return 0;
+  }
+
+  if (pack.purchaseRule.type === "daily") {
+    return calculateEventPackDailyAvailability(
+      currentDate,
+      targetDate,
+      currencyPack,
+      pack.purchaseRule.limit,
+    ).maximumQuantity;
+  }
+
+  return pack.purchaseRule.limit;
+}
+
+function createCurrencyPackPurchaseState(currencyPacks) {
+  return Object.fromEntries(
+    currencyPacks.map((currencyPack) => [
+      currencyPack.id,
+      Object.fromEntries(
+        currencyPack.packs.map((pack) => [
+          pack.id,
+          { selected: false, quantity: 0 },
+        ]),
+      ),
+    ]),
+  );
+}
+
+function normalizeCurrencyPackPurchases(
+  currencyPack,
+  purchases,
+  currentDate,
+  targetDate,
+) {
+  const normalized = Object.fromEntries(
+    currencyPack.packs.map((pack) => {
+      const purchase = purchases?.[pack.id];
+      const maximumQuantity = getCurrencyPackMaximumQuantity(
+        pack,
+        currencyPack,
+        currentDate,
+        targetDate,
+      );
+      const requestedQuantity = Number.isSafeInteger(purchase?.quantity)
+        ? purchase.quantity
+        : 0;
+      const quantity = purchase?.selected
+        ? Math.min(Math.max(requestedQuantity, 1), maximumQuantity)
+        : 0;
+
+      return [pack.id, { selected: quantity > 0, quantity }];
+    }),
+  );
+  let changed;
+
+  do {
+    changed = false;
+    currencyPack.packs.forEach((pack) => {
+      const purchase = normalized[pack.id];
+      const prerequisitesSatisfied = pack.prerequisites.every(
+        (prerequisiteId) => normalized[prerequisiteId]?.selected,
+      );
+
+      if (purchase.selected && !prerequisitesSatisfied) {
+        normalized[pack.id] = { selected: false, quantity: 0 };
+        changed = true;
+      }
+    });
+  } while (changed);
+
+  return normalized;
+}
+
+function normalizeCurrencyPackPurchaseState(
+  currencyPacks,
+  purchaseState,
+  currentDate,
+  targetDate,
+) {
+  return Object.fromEntries(
+    currencyPacks.map((currencyPack) => [
+      currencyPack.id,
+      normalizeCurrencyPackPurchases(
+        currencyPack,
+        purchaseState?.[currencyPack.id],
+        currentDate,
+        targetDate,
+      ),
+    ]),
+  );
+}
+
+function calculateCurrencyPackPurchaseSummary(
+  currencyPacks,
+  purchaseState,
+  preConversionResources,
+  currentDate,
+  targetDate,
+  targetBanner,
+  resourceInstances,
+) {
+  const normalizedState = normalizeCurrencyPackPurchaseState(
+    currencyPacks,
+    purchaseState,
+    currentDate,
+    targetDate,
+  );
+  const costs = { diamond: 0, red_diamond: 0 };
+  const rewards = {};
+  const resourceInstancesById = new Map(
+    resourceInstances.map((resource) => [resource.id, resource]),
+  );
+
+  currencyPacks.forEach((currencyPack) => {
+    currencyPack.packs.forEach((pack) => {
+      const quantity = normalizedState[currencyPack.id][pack.id].quantity;
+
+      if (quantity === 0) {
+        return;
+      }
+
+      costs[pack.cost.resourceId] += pack.cost.amount * quantity;
+      pack.contents.forEach(({ resourceId, amount }) => {
+        let targetResourceId = resourceId;
+
+        if (!PRE_CONVERSION_RESOURCE_IDS.includes(resourceId)) {
+          const resource = resourceInstancesById.get(resourceId);
+
+          if (
+            !resource ||
+            !isResourceInstanceAvailable(
+              resource,
+              targetDate,
+              targetBanner,
+            )
+          ) {
+            return;
+          }
+
+          targetResourceId = resource.category;
+        }
+
+        rewards[targetResourceId] =
+          (rewards[targetResourceId] ?? 0) + amount * quantity;
+      });
+    });
+  });
+
+  for (const resourceId of ["diamond", "red_diamond"]) {
+    if (
+      costs[resourceId] > 0 &&
+      (preConversionResources[resourceId] ?? 0) - costs[resourceId] < 0
+    ) {
+      const resourceName = resourceId === "diamond" ? "钻石" : "红钻";
+      return {
+        valid: false,
+        error: `${resourceName}余额不足。`,
+        costs,
+        rewards,
+        resources: { ...preConversionResources },
+        purchaseState: normalizedState,
+      };
+    }
+  }
+
+  const resources = { ...preConversionResources };
+  resources.diamond = (resources.diamond ?? 0) - costs.diamond;
+  resources.red_diamond =
+    (resources.red_diamond ?? 0) - costs.red_diamond;
+  Object.entries(rewards).forEach(([resourceId, amount]) => {
+    resources[resourceId] = (resources[resourceId] ?? 0) + amount;
+  });
+
+  return {
+    valid: true,
+    error: null,
+    costs,
+    rewards,
+    resources,
+    purchaseState: normalizedState,
+  };
+}
+
+function updateCurrencyPackPurchase(
+  currencyPacks,
+  purchaseState,
+  currencyPackId,
+  packId,
+  selected,
+  quantity,
+  preConversionResources,
+  currentDate,
+  targetDate,
+  targetBanner,
+  resourceInstances,
+) {
+  const currencyPack = currencyPacks.find(
+    (item) => item.id === currencyPackId,
+  );
+  const pack = currencyPack?.packs.find((item) => item.id === packId);
+
+  if (!currencyPack || !pack) {
+    return { valid: false, error: "未知的钻石 / 红钻礼包。", purchaseState };
+  }
+
+  const currentState = normalizeCurrencyPackPurchaseState(
+    currencyPacks,
+    purchaseState,
+    currentDate,
+    targetDate,
+  );
+  const maximumQuantity = getCurrencyPackMaximumQuantity(
+    pack,
+    currencyPack,
+    currentDate,
+    targetDate,
+  );
+
+  if (
+    selected &&
+    (!Number.isSafeInteger(quantity) ||
+      quantity < 1 ||
+      quantity > maximumQuantity)
+  ) {
+    return {
+      valid: false,
+      error: `购买数量必须为 1～${maximumQuantity}。`,
+      purchaseState: currentState,
+    };
+  }
+
+  if (
+    selected &&
+    !pack.prerequisites.every(
+      (prerequisiteId) =>
+        currentState[currencyPackId][prerequisiteId]?.selected,
+    )
+  ) {
+    return {
+      valid: false,
+      error: `需先购买：${pack.prerequisites.join("、")}`,
+      purchaseState: currentState,
+    };
+  }
+
+  const candidateState = Object.fromEntries(
+    Object.entries(currentState).map(([id, purchases]) => [
+      id,
+      Object.fromEntries(
+        Object.entries(purchases).map(([id, purchase]) => [
+          id,
+          { ...purchase },
+        ]),
+      ),
+    ]),
+  );
+  candidateState[currencyPackId][packId] = selected
+    ? { selected: true, quantity }
+    : { selected: false, quantity: 0 };
+  const result = calculateCurrencyPackPurchaseSummary(
+    currencyPacks,
+    candidateState,
+    preConversionResources,
+    currentDate,
+    targetDate,
+    targetBanner,
+    resourceInstances,
+  );
+
+  if (!result.valid) {
+    return {
+      valid: false,
+      error: result.error,
+      purchaseState: currentState,
+    };
+  }
+
+  return {
+    valid: true,
+    error: null,
+    purchaseState: result.purchaseState,
+    summary: result,
+  };
+}

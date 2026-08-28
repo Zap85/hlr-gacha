@@ -1,0 +1,28 @@
+{
+  "resources": [
+    {
+      "id": "示例限时老荷兰批次ID",
+      "category": "timed_paint",
+      "availableFrom": "2026-01-01",
+      "expiresAt": "2026-01-10"
+    },
+    {
+      "id": "示例限定老荷兰ID",
+      "name": "示例限定老荷兰名称",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_id",
+        "values": ["示例卡池ID"]
+      }
+    },
+    {
+      "id": "示例生日限定老荷兰",
+      "name": "示例生日限定老荷兰",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_tag",
+        "values": ["birthday"]
+      }
+    }
+  ]
+}

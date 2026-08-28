@@ -1,13 +1,16 @@
 "use strict";
 
-const BANNER_PATHS = ["data/banners/sample-banner.json"];
+const BANNER_PATHS = ["data/banners/test-banner.json"];
 const RESOURCE_TYPES_PATH = "data/resources/resource-types.json";
-const RESOURCE_INSTANCES_PATH = "data/resources/sample-resources.json";
+const RESOURCE_INSTANCES_PATH = "data/resources/test-resources.json";
 const CONSTANTS_PATH = "data/constants.json";
 const EVENT_TYPES_PATH = "data/events/event-types.json";
-const EVENTS_PATH = "data/events/sample-event.json";
-const PERMANENT_PACKS_PATH = "data/permanent-packs.json";
+const EVENTS_PATH = "data/events/test-event.json";
+const PERMANENT_PACKS_PATH = "data/packs/permanent-packs.json";
 const EVENT_PACK_PATHS = ["data/packs/event-packs/庄园诡戏.json"];
+const CURRENCY_PACK_PATHS = [
+  "data/packs/currency-packs/庄园诡戏.json",
+];
 
 function isValidCalendarDate(value) {
   if (typeof value !== "string") {
@@ -623,6 +626,140 @@ async function loadEventPacks(
       }
 
       eventPackIds.add(eventPack.id);
+      return true;
+    });
+}
+
+function isValidCurrencyPackItem(pack, validResourceIds) {
+  if (
+    pack === null ||
+    typeof pack !== "object" ||
+    typeof pack.id !== "string" ||
+    pack.id.trim() === "" ||
+    typeof pack.name !== "string" ||
+    pack.name.trim() === "" ||
+    Object.prototype.hasOwnProperty.call(pack, "price") ||
+    Object.prototype.hasOwnProperty.call(
+      pack,
+      "countsTowardLimitedRecharge",
+    ) ||
+    pack.cost === null ||
+    typeof pack.cost !== "object" ||
+    !["diamond", "red_diamond"].includes(pack.cost.resourceId) ||
+    !Number.isSafeInteger(pack.cost.amount) ||
+    pack.cost.amount <= 0 ||
+    !isValidEventPackPurchaseRule(pack.purchaseRule) ||
+    !Array.isArray(pack.contents) ||
+    !pack.contents.every((content) =>
+      isValidEventPackContent(content, validResourceIds),
+    ) ||
+    !Array.isArray(pack.otherContents) ||
+    !pack.otherContents.every(isValidEventPackOtherContent) ||
+    !Array.isArray(pack.prerequisites) ||
+    !pack.prerequisites.every(
+      (prerequisite) =>
+        typeof prerequisite === "string" && prerequisite.trim() !== "",
+    ) ||
+    !isValidEventPackTrigger(pack.trigger) ||
+    !Array.isArray(pack.deferredRewards) ||
+    !pack.deferredRewards.every(isValidEventPackDeferredReward)
+  ) {
+    return false;
+  }
+
+  const contentResourceIds = new Set(
+    pack.contents.map((content) => content.resourceId),
+  );
+  return contentResourceIds.size === pack.contents.length;
+}
+
+function sanitizeCurrencyPack(currencyPack, validResourceIds) {
+  if (
+    currencyPack === null ||
+    typeof currencyPack !== "object" ||
+    typeof currencyPack.id !== "string" ||
+    currencyPack.id.trim() === "" ||
+    typeof currencyPack.name !== "string" ||
+    currencyPack.name.trim() === "" ||
+    typeof currencyPack.eventId !== "string" ||
+    currencyPack.eventId.trim() === "" ||
+    !isValidCalendarDate(currencyPack.startDate) ||
+    !isValidCalendarDate(currencyPack.endDate) ||
+    currencyPack.startDate > currencyPack.endDate ||
+    !Array.isArray(currencyPack.packs)
+  ) {
+    return null;
+  }
+
+  const packIds = new Set();
+  let packs = currencyPack.packs.filter((pack) => {
+    if (
+      !isValidCurrencyPackItem(pack, validResourceIds) ||
+      packIds.has(pack.id)
+    ) {
+      return false;
+    }
+
+    packIds.add(pack.id);
+    return true;
+  });
+
+  let previousLength;
+
+  do {
+    previousLength = packs.length;
+    const validPackIds = new Set(packs.map((pack) => pack.id));
+    packs = packs.filter((pack) =>
+      pack.prerequisites.every(
+        (prerequisite) =>
+          prerequisite !== pack.id && validPackIds.has(prerequisite),
+      ),
+    );
+  } while (packs.length !== previousLength);
+
+  return { ...currencyPack, packs };
+}
+
+async function loadCurrencyPacks(
+  paths = CURRENCY_PACK_PATHS,
+  resourceTypePath = RESOURCE_TYPES_PATH,
+  resourceInstancesPath = RESOURCE_INSTANCES_PATH,
+) {
+  const [resourceTypes, resourceInstances, currencyPackData] =
+    await Promise.all([
+      loadResourceTypes(resourceTypePath),
+      loadResourceInstances(resourceInstancesPath),
+      Promise.all(
+        paths.map(async (path) => {
+          const response = await fetch(path);
+
+          if (!response.ok) {
+            throw new Error(`无法读取钻石 / 红钻礼包数据：${path}`);
+          }
+
+          return response.json();
+        }),
+      ),
+    ]);
+  const validResourceIds = new Set([
+    ...resourceTypes.map((resourceType) => resourceType.id),
+    ...resourceInstances.map((resource) => resource.id),
+  ]);
+  const currencyPackIds = new Set();
+
+  return currencyPackData
+    .map((currencyPack) =>
+      sanitizeCurrencyPack(currencyPack, validResourceIds),
+    )
+    .filter((currencyPack) => {
+      if (
+        currencyPack === null ||
+        currencyPackIds.has(currencyPack.id)
+      ) {
+        return false;
+      }
+
+      currencyPackIds.add(currencyPack.id);
       return true;
     });
 }

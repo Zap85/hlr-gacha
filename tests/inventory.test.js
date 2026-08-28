@@ -32,7 +32,7 @@ const resourceTypeData = JSON.parse(
   readProjectFile(path.join("data", "resources", "resource-types.json")),
 );
 const resourceInstanceData = JSON.parse(
-  readProjectFile(path.join("data", "resources", "sample-resources.json")),
+  readProjectFile(path.join("data", "resources", "test-resources.json")),
 );
 const appContext = vm.createContext({ parseInventoryAmount });
 
@@ -135,7 +135,7 @@ const loaderContext = vm.createContext({
     return {
       ok: true,
       json: async () =>
-        requestedPath === "data/resources/sample-resources.json"
+        requestedPath === "data/resources/test-resources.json"
           ? resourceInstanceData
           : resourceTypeData,
     };
@@ -164,7 +164,7 @@ const loadResourceInstances = vm.runInContext(
   );
 
   assert.equal(requestedPaths[0], "data/resources/resource-types.json");
-  assert.equal(requestedPaths[1], "data/resources/sample-resources.json");
+  assert.equal(requestedPaths[1], "data/resources/test-resources.json");
   assert.equal(resourceTypes.length, 5);
   assert.equal(timedPaintBatches.length, 2);
   assert.equal(limitedPaintResources.length, 3);

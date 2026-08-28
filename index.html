@@ -11,8 +11,10 @@
       <h1>时空中的绘旅人攒抽计算器</h1>
       <p>开发测试版</p>
 
+      <div class="calculator-layout">
+        <aside class="calculator-sidebar">
       <section aria-labelledby="date-section-title">
-        <h2 id="date-section-title">一、日期与计算方式</h2>
+        <h2 id="date-section-title">日期与计算方式</h2>
 
         <div class="date-fields">
           <label>
@@ -76,7 +78,7 @@
       </section>
 
       <section aria-labelledby="inventory-section-title">
-        <h2 id="inventory-section-title">二、库存资源</h2>
+        <h2 id="inventory-section-title">库存资源</h2>
 
         <h3>固定资源</h3>
         <div id="fixed-inventory-fields" class="inventory-fields">
@@ -108,8 +110,46 @@
         <p id="dynamic-inventory-error" class="inventory-error" aria-live="polite"></p>
       </section>
 
+      <section aria-labelledby="pre-conversion-section-title">
+        <h2 id="pre-conversion-section-title">资源总计</h2>
+        <dl class="accumulation-summary">
+          <div>
+            <dt>钻石</dt>
+            <dd><output id="pre-conversion-diamond">0</output></dd>
+          </div>
+          <div>
+            <dt>红钻</dt>
+            <dd><output id="pre-conversion-red-diamond">0</output></dd>
+          </div>
+          <div>
+            <dt>老荷兰颜料</dt>
+            <dd><output id="pre-conversion-common-paint">0</output></dd>
+          </div>
+          <div>
+            <dt>限时老荷兰</dt>
+            <dd><output id="pre-conversion-timed-paint">0</output></dd>
+          </div>
+          <div>
+            <dt>限定老荷兰</dt>
+            <dd><output id="pre-conversion-limited-paint">0</output></dd>
+          </div>
+          <div>
+            <dt>人民币总金额</dt>
+            <dd><output id="pre-conversion-rmb-total">¥0</output></dd>
+          </div>
+          <div>
+            <dt>计入限时累充金额</dt>
+            <dd><output id="pre-conversion-limited-recharge-rmb">¥0</output></dd>
+          </div>
+        </dl>
+        <p id="pre-conversion-error" class="date-error" aria-live="polite"></p>
+      </section>
+        </aside>
+
+        <div class="calculator-workflow">
+
       <section aria-labelledby="free-accumulation-section-title">
-        <h2 id="free-accumulation-section-title">三、日常收入</h2>
+        <h2 id="free-accumulation-section-title">日常收入</h2>
         <label class="daily-income-toggle">
           <input id="today-income-claimed" type="checkbox" checked>
           <span>
@@ -176,7 +216,7 @@
       </section>
 
       <section aria-labelledby="event-income-section-title">
-        <h2 id="event-income-section-title">四、活动收入</h2>
+        <h2 id="event-income-section-title">活动收入</h2>
         <p id="event-income-message" aria-live="polite">正在加载活动数据。</p>
         <div id="event-income-groups" class="event-income-groups" hidden>
           <section aria-labelledby="current-events-title">
@@ -195,7 +235,7 @@
 
       <section aria-labelledby="permanent-packs-section-title">
         <details class="pack-disclosure">
-          <summary id="permanent-packs-section-title">五、新人和等级礼包</summary>
+          <summary id="permanent-packs-section-title">新人和等级礼包</summary>
           <div class="pack-disclosure-content">
             <label>
               红钻理论折算率（红钻 / 抽）
@@ -209,7 +249,7 @@
 
       <section aria-labelledby="event-packs-section-title">
         <details class="pack-disclosure event-packs-disclosure">
-          <summary id="event-packs-section-title">六、活动礼包</summary>
+          <summary id="event-packs-section-title">活动礼包</summary>
           <div class="pack-disclosure-content">
             <p id="event-packs-message" aria-live="polite">正在加载活动礼包数据。</p>
             <div id="event-pack-groups" class="event-pack-groups"></div>
@@ -232,8 +272,19 @@
         </details>
       </section>
 
+      <section aria-labelledby="currency-packs-section-title">
+        <details class="pack-disclosure currency-packs-disclosure">
+          <summary id="currency-packs-section-title">钻石 / 红钻礼包</summary>
+          <div class="pack-disclosure-content">
+            <p id="currency-packs-message" aria-live="polite">正在加载钻石 / 红钻礼包数据。</p>
+            <div id="currency-pack-groups" class="event-pack-groups"></div>
+            <p id="currency-packs-error" class="date-error" aria-live="polite"></p>
+          </div>
+        </details>
+      </section>
+
       <section aria-labelledby="other-section-title">
-        <h2 id="other-section-title">七、其他</h2>
+        <h2 id="other-section-title">个性化调整</h2>
         <p>资源手动调整区。正数增加资源，负数扣除资源。</p>
         <div class="inventory-fields">
           <label class="inventory-field">
@@ -262,40 +313,12 @@
         <p id="other-error" class="inventory-error" aria-live="polite"></p>
       </section>
 
-      <section aria-labelledby="pre-conversion-section-title">
-        <h2 id="pre-conversion-section-title">八、资源总计（兑换前）</h2>
-        <dl class="accumulation-summary">
-          <div>
-            <dt>钻石</dt>
-            <dd><output id="pre-conversion-diamond">0</output></dd>
-          </div>
-          <div>
-            <dt>红钻</dt>
-            <dd><output id="pre-conversion-red-diamond">0</output></dd>
-          </div>
-          <div>
-            <dt>老荷兰颜料</dt>
-            <dd><output id="pre-conversion-common-paint">0</output></dd>
-          </div>
-          <div>
-            <dt>限时老荷兰</dt>
-            <dd><output id="pre-conversion-timed-paint">0</output></dd>
-          </div>
-          <div>
-            <dt>限定老荷兰</dt>
-            <dd><output id="pre-conversion-limited-paint">0</output></dd>
-          </div>
-          <div>
-            <dt>人民币总金额</dt>
-            <dd><output id="pre-conversion-rmb-total">¥0</output></dd>
-          </div>
-          <div>
-            <dt>计入限时累充金额</dt>
-            <dd><output id="pre-conversion-limited-recharge-rmb">¥0</output></dd>
-          </div>
-        </dl>
-        <p id="pre-conversion-error" class="date-error" aria-live="polite"></p>
+      <section aria-labelledby="future-calculation-section-title">
+        <h2 id="future-calculation-section-title">后续计算模块</h2>
+        <p>更多资源消费与最终折算功能将在后续开发。</p>
       </section>
+        </div>
+      </div>
     </main>
 
     <script defer src="js/calculator.js"></script>

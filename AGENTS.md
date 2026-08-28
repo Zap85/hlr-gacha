@@ -20,11 +20,21 @@
   data-loader.js
 
 - 数据层：
-  data/*.json
+  data/**/*.json
 
 必须保持以上职责分离。
 
 ## 数据实体边界
+
+### 数据文件命名与目录
+
+- `*-types.json` 保存可复用的规则或类型定义。
+- `*.template.json` 只作为人工或 AI 维护数据时使用的结构模板，不得参与正式业务加载。
+- `test-*.json` 保存当前开发阶段使用的真实数据实例；不得再使用 `sample-*` 表示模板。
+- 礼包数据统一存放在 `data/packs/`：固定人民币礼包使用 `permanent-packs.json`，Event Pack 和 Currency Pack 分别使用 `event-packs/`、`currency-packs/`。
+- Event Pack 和 Currency Pack 均按一次活动一个 JSON 文件维护。
+
+### Banner 与 Event
 
 - Banner 和 Event 是两个独立的数据实体，不得混用。
 - `data/banners/` 用于保存卡池数据，包括卡池 id、卡池名称、开池日期、结束日期及未来其他卡池属性。
@@ -41,7 +51,7 @@
 
 - Event 表示活动本身及免费活动收入，Event Pack 表示人民币限时礼包；两者是独立实体，不得混用。
 - `data/events/event-types.json` 维护活动类型模板，具体 Event 通过稳定 `type` 引用模板，不得重复保存模板收入。
-- `data/events/sample-event.json` 只保存开发测试用的具体 Event 实例，不承担活动类型模板定义职责。
+- `data/events/test-event.json` 只保存开发测试用的具体 Event 实例，不承担活动类型模板定义职责。
 - 实际活动收入为 type 模板值加 Event 的 `incomeAdjustment`；调整分别支持 `available`、`complete`，值可以为正数、0 或负数，未填写的资源视为 0。
 - Event 与 Banner 不建立显式关联。活动收入只比较 Event 的 `startDate`、`endDate` 与当前 `targetDate`：目标早于开始日期时不计入，开始日期至结束日期前使用 `available`，到达或超过结束日期时使用 `complete`。
 - 活动收入仅在“目标方式 = 选择卡池”时生效；自定义日期模式不得计入活动收入。
@@ -98,8 +108,8 @@
 
 ## 日常收入与付费项目约束
 
-- “三、日常收入”负责免费日常收入，以及用户选择启用后的月卡、季卡、年卡、猫条等长期周期性权益收入。
-- “三、日常收入”是当前唯一确认的基础区间例外：使用统一的 `todayIncomeClaimed`（“今日收入已领取”）开关，默认 `true`；为 `true` 时按 `(currentDate, targetDate]` 计算，为 `false` 时按 `[currentDate, targetDate]` 计算。该开关统一控制当天的每日任务、每周分享、签到、月末奖励及各类日常持续收益，不得拆分为多个当天确认项。
+- “日常收入”负责免费日常收入，以及用户选择启用后的月卡、季卡、年卡、猫条等长期周期性权益收入。
+- “日常收入”是当前唯一确认的基础区间例外：使用统一的 `todayIncomeClaimed`（“今日收入已领取”）开关，默认 `true`；为 `true` 时按 `(currentDate, targetDate]` 计算，为 `false` 时按 `[currentDate, targetDate]` 计算。该开关统一控制当天的每日任务、每周分享、签到、月末奖励及各类日常持续收益，不得拆分为多个当天确认项。
 - 月卡每日增加 50 钻；基础购买张数为 `ceil(计算天数 / 30)`，允许正负调整，实际购买张数不得小于 0；每张购买立即增加 300 钻。
 - 月卡启用后，月签到中的钻石奖励翻倍，老荷兰颜料不翻倍；翻倍结果必须合并在原“月签到奖励”中，不得建立重复收入项目。
 - 月卡是长期可持续购买项目，其购买数量和购买金额由日常收入模块处理。
@@ -113,6 +123,7 @@
 ## 新人和等级礼包约束
 
 - “新人和等级礼包”只处理固定人民币礼包，不包含活动礼包、钻石/红钻礼包或免费活动收入。
+- 固定人民币礼包数据统一存放在 `data/packs/permanent-packs.json`。
 - permanent pack 数据保存礼包事实，包括稳定 `id`、`name`、`price`、固定 `purchaseLimit` 或结构化 `purchaseRule`、`contents` 和 `countsTowardLimitedRecharge`；不得保存 `theoreticalPulls` 或 `pricePerPull`。
 - 理论抽数按钻石 150 = 1 抽、老荷兰颜料 1 = 1 抽、红钻除以用户设置的理论折算率计算；默认折算率为 70.71 红钻/抽，仅用于理论性价比，不得触发玩家红钻的实际转换。
 - `theoreticalPulls` 和 `pricePerPull` 允许小数，内部必须保留完整精度；前端按 `pricePerPull` 从低到高排序。
@@ -123,7 +134,7 @@
 
 ## 活动礼包约束
 
-- “六、活动礼包”为默认折叠的一级模块，其下必须支持同时显示多个 Event Pack 二级分组。
+- “活动礼包”为默认折叠的一级模块，其下必须支持同时显示多个 Event Pack 二级分组。
 - Event Pack 数据存放在 `data/packs/event-packs/`，每个礼包 Event 使用一个 JSON 文件维护。
 - Event 与 Event Pack 是独立实体，通过稳定 `eventId` 关联；Event 可以没有对应礼包，Event Pack 不得与 Banner 强制绑定。
 - `contents` 只保存参与攒抽计算的资源；`otherContents` 只用于记录或展示非抽卡奖励；`deferredRewards` 表示延期奖励，不自动计入当前抽卡资源。
@@ -131,14 +142,32 @@
 - `prerequisites` 使用稳定 pack id 表示购买前置关系；`pull_count` trigger 与前置关系分离，当前只展示触发条件，不自动判断解锁。
 - 同一礼包内重复的同一种抽卡资源可以合并记录。
 
-## 手动调整与兑换前汇总约束
+## 钻石 / 红钻礼包约束
 
-- “其他”只作为手动资源调整区，调整量允许正数、0 或负数；不得为调整建立结构化来源或修改资源 JSON。
-- “其他”中的限时、限定老荷兰视为用户已确认对当前目标有效，不再判断有效期或 `applicability`。
-- “资源总计（兑换前）”汇总库存、日常收入、活动收入、新人和等级礼包、活动礼包及“其他”调整。
-- `diamond`、`red_diamond`、`common_paint`、`timed_paint`、`limited_paint` 在兑换前必须保持独立，不得进行红钻转换、钻石转抽、礼包消费或最终抽数折算。
+- Currency Pack 表示消耗游戏内钻石或红钻购买的限时礼包，与人民币 Event Pack 是不同实体。
+- Currency Pack 存放在 `data/packs/currency-packs/`，通过稳定 `eventId` 关联 Event，并维护自身的 `startDate`、`endDate`；仅当用户基础计算区间与该有效期存在交集时才可显示。
+- Currency Pack 使用 `cost` 表示支付资源，不得使用人民币项目的 `price` 或 `countsTowardLimitedRecharge`；当前 `cost.resourceId` 只支持 `diamond` 和 `red_diamond`。
+- Currency Pack 不增加 RMB，也不计入限时累充；`contents`、`otherContents`、`prerequisites`、`trigger`、`deferredRewards` 沿用 Event Pack 的数据语义。
+- 同一 Currency Pack 文件同时保存钻石礼包和红钻礼包，前端按 `cost.resourceId` 分组，不得拆成两套数据。
+- 钻石礼包不计算性价比。红钻礼包计算 `theoreticalPulls` 和 `redDiamondPerPull = redDiamondCost / theoreticalPulls`；该实际消费效率不得使用新人和等级礼包的 70.71 红钻/抽理论估值参数。
+- Currency Pack 必须在购买前资源状态上扣除 `cost`、加入 `contents` 后派生当前资源状态，不得直接修改购买前汇总；购买不得使钻石或红钻余额为负。
+- Currency Pack 计算不得自动进行红钻转钻石或钻石转抽数。
+
+## 个性化调整与资源总计约束
+
+- 用户可见的“个性化调整”是手动资源调整区，调整量允许正数、0 或负数；不得为调整建立结构化来源或修改资源 JSON，也不得影响 RMB 或限时累充。既有 `otherState` 等内部命名无需因此重构。
+- “个性化调整”中的限时、限定老荷兰视为用户已确认对当前目标有效，不再判断有效期或 `applicability`。
+- 用户界面统一使用“资源总计”作为唯一权威实时资源结果；内部可以保留购买前汇总等计算阶段，但不得为各阶段重复展示完整资源总计。
+- `diamond`、`red_diamond`、`common_paint`、`timed_paint`、`limited_paint` 必须保持独立；当前结果应在购买前资源状态上继续反映 Currency Pack 等已实现步骤，不得自动进行红钻转换或钻石转抽。
+- 库存、收入、人民币礼包、Currency Pack 或个性化调整变化后，资源总计必须即时反映当前状态。
 - 手动调整可能使中间汇总为负数，不得自动截断为 0。
-- RMB 只来源于实际人民币购买项目；游戏内钻石、红钻消费不得计入 RMB。
+- RMB 总计和限时累充金额只受实际人民币购买项目影响；游戏内钻石、红钻消费不得计入 RMB。
+
+## 页面信息架构约束
+
+- 页面用户可见模块标题不得使用“一、二、三……”等中文数字编号。
+- 桌面端采用双栏信息架构：左侧依次放置日期与计算方式、库存资源、资源总计；右侧依次放置日常收入、活动收入、新人和等级礼包、活动礼包、钻石 / 红钻礼包、个性化调整及后续计算模块。窄屏可以恢复单栏。
+- 左侧保存基础设置、初始资源和权威实时结果，右侧保存计算过程与用户选择；不得在各计算模块底部重复展示完整的处理后资源。
 
 ## 技术原则
 

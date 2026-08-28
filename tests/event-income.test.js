@@ -13,7 +13,7 @@ const eventTypeData = JSON.parse(
   readProjectFile(path.join("data", "events", "event-types.json")),
 );
 const eventData = JSON.parse(
-  readProjectFile(path.join("data", "events", "sample-event.json")),
+  readProjectFile(path.join("data", "events", "test-event.json")),
 );
 const eventTypes = eventTypeData.eventTypes;
 const events = eventData.events;
@@ -257,7 +257,7 @@ assert.equal(getEventIncomeLabel("future"), "预计可计入");
   assert.equal(loadedEvents.every((event) => Array.isArray(event.exchanges)), true);
   assert.deepEqual(requestedPaths, [
     "data/events/event-types.json",
-    "data/events/sample-event.json",
+    "data/events/test-event.json",
   ]);
   console.log("event income: data and calculation tests passed");
 })().catch((error) => {

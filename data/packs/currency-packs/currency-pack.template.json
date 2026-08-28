@@ -1,0 +1,53 @@
+{
+  "id": "示例钻石红钻礼包",
+  "name": "示例钻石红钻礼包",
+  "eventId": "示例活动ID",
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-10",
+  "packs": [
+    {
+      "id": "示例钻石礼包",
+      "name": "示例钻石礼包",
+      "cost": {
+        "resourceId": "diamond",
+        "amount": 100
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "common_paint",
+          "amount": 1
+        }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "示例红钻礼包",
+      "name": "示例红钻礼包",
+      "cost": {
+        "resourceId": "red_diamond",
+        "amount": 680
+      },
+      "purchaseRule": {
+        "type": "total",
+        "limit": 1
+      },
+      "contents": [
+        {
+          "resourceId": "common_paint",
+          "amount": 10
+        }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    }
+  ]
+}
