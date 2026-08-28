@@ -1,0 +1,275 @@
+{
+  "id": "庄园诡戏礼包",
+  "name": "庄园诡戏礼包",
+  "eventId": "庄园诡戏",
+  "startDate": "2026-08-26",
+  "endDate": "2026-09-02",
+  "packs": [
+    {
+      "id": "咖啡外送订单",
+      "name": "咖啡外送订单",
+      "price": 3,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "daily", "limit": 1 },
+      "contents": [],
+      "otherContents": [
+        { "name": "冰美式", "amount": 3 },
+        { "name": "金币", "amount": 5000 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "莱顿庄园礼包",
+      "name": "莱顿庄园礼包",
+      "price": 25,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 3 }
+      ],
+      "otherContents": [
+        { "name": "出行地点·莱顿庄园-困顿", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": [
+        {
+          "name": "莱顿庄园-初融",
+          "amount": 1,
+          "availableDate": "2026-09-05",
+          "note": "9月5日5点后邮件发送"
+        }
+      ]
+    },
+    {
+      "id": "庄园大型颜料箱",
+      "name": "庄园大型颜料箱",
+      "price": 328,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 2 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 48 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园诡戏颜料包I",
+      "name": "庄园诡戏颜料包I",
+      "price": 8,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 1 },
+        { "resourceId": "灵魂老荷兰", "amount": 1 }
+      ],
+      "otherContents": [
+        { "name": "画像使用券", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园诡戏颜料包II",
+      "name": "庄园诡戏颜料包II",
+      "price": 98,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 10 },
+        { "resourceId": "灵魂老荷兰", "amount": 10 }
+      ],
+      "otherContents": [
+        { "name": "画像使用券", "amount": 15 }
+      ],
+      "prerequisites": ["庄园诡戏颜料包I"],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园诡戏颜料包III",
+      "name": "庄园诡戏颜料包III",
+      "price": 118,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 10 },
+        { "resourceId": "灵魂老荷兰", "amount": 15 }
+      ],
+      "otherContents": [
+        { "name": "画像使用券", "amount": 25 }
+      ],
+      "prerequisites": ["庄园诡戏颜料包II"],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园诡戏专项百连",
+      "name": "庄园诡戏专项百连",
+      "price": 648,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 55 },
+        { "resourceId": "灵魂老荷兰", "amount": 55 },
+        { "resourceId": "diamond", "amount": 1555 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园画材大礼包",
+      "name": "庄园画材大礼包",
+      "price": 68,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 10 },
+        { "resourceId": "diamond", "amount": 68 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园每日礼包",
+      "name": "庄园每日礼包",
+      "price": 6,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "daily", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 1 },
+        { "resourceId": "diamond", "amount": 20 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园特殊颜料盒II",
+      "name": "庄园特殊颜料盒II",
+      "price": 198,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 28 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园推送礼·第1",
+      "name": "庄园推送礼·第1",
+      "price": 28,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 5 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": { "type": "pull_count", "value": 10 },
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园推送礼·第2",
+      "name": "庄园推送礼·第2",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "灵魂老荷兰", "amount": 3 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": { "type": "pull_count", "value": 30 },
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园推送礼·第3",
+      "name": "庄园推送礼·第3",
+      "price": 68,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "灵魂老荷兰", "amount": 18 }
+      ],
+      "otherContents": [
+        { "name": "金币", "amount": 50000 }
+      ],
+      "prerequisites": [],
+      "trigger": { "type": "pull_count", "value": 80 },
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园推送礼·第4",
+      "name": "庄园推送礼·第4",
+      "price": 88,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "灵魂老荷兰", "amount": 25 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": { "type": "pull_count", "value": 180 },
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园推送礼·第5",
+      "name": "庄园推送礼·第5",
+      "price": 98,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "灵魂老荷兰", "amount": 33 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": { "type": "pull_count", "value": 380 },
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园颜料觉悟礼包",
+      "name": "庄园颜料觉悟礼包",
+      "price": 138,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 3 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 12 }
+      ],
+      "otherContents": [
+        { "name": "觉悟", "amount": 10 },
+        { "name": "星尘之铃·破", "amount": 10 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "庄园月卡特惠盒",
+      "name": "庄园月卡特惠盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 6 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    }
+  ]
+}

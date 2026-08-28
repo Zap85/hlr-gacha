@@ -90,19 +90,23 @@
 
 ## 日期型资源计算约束
 
-- 所有日期型资源计算统一遵守“当前日期排除、目标日期包含”。
+- 用户基础计算区间统一为 `[currentDate, targetDate]`，首尾均包含，并按日历日期处理。
+- 基础计算区间只表示用户的计算时间范围，不覆盖 Banner、Event、Event Pack 等对象自身的 `startDate`、`endDate` 或阶段规则；各模块必须按自身业务规则决定是否与有效期取交集。
+- Event 继续按 `targetDate` 判断收入阶段，不改为逐日交集。
+- Event Pack 的 `daily` 可购买次数按 `[currentDate, targetDate]` 与 `[eventPack.startDate, eventPack.endDate]` 的交集计算，两端均包含。
 - 周期性收入必须按区间内实际经过的日历日期计算，不得使用天数除以周期或平均月份天数等方式估算。
 
 ## 日常收入与付费项目约束
 
 - “三、日常收入”负责免费日常收入，以及用户选择启用后的月卡、季卡、年卡、猫条等长期周期性权益收入。
+- “三、日常收入”是当前唯一确认的基础区间例外：使用统一的 `todayIncomeClaimed`（“今日收入已领取”）开关，默认 `true`；为 `true` 时按 `(currentDate, targetDate]` 计算，为 `false` 时按 `[currentDate, targetDate]` 计算。该开关统一控制当天的每日任务、每周分享、签到、月末奖励及各类日常持续收益，不得拆分为多个当天确认项。
 - 月卡每日增加 50 钻；基础购买张数为 `ceil(计算天数 / 30)`，允许正负调整，实际购买张数不得小于 0；每张购买立即增加 300 钻。
 - 月卡启用后，月签到中的钻石奖励翻倍，老荷兰颜料不翻倍；翻倍结果必须合并在原“月签到奖励”中，不得建立重复收入项目。
 - 月卡是长期可持续购买项目，其购买数量和购买金额由日常收入模块处理。
 - 季卡在日常收入模块只处理启用后的每日 50 钻；购买价格、购买立即奖励等购买行为归入后续活动礼包。
 - 年卡每月 23 日增加 5 个老荷兰颜料，猫条每月 23 日增加 1 个老荷兰颜料；日常收入模块只处理其周期性收益，购买价格和购买行为归入后续活动礼包。
 - 所有实际人民币付费项目的数据模型必须支持 `price` 和 `countsTowardLimitedRecharge`；`price` 表示人民币价格，`countsTowardLimitedRecharge` 表示是否计入限时累充，后者仅供内部计算，不要求前端展示。
-- 当前仅确认月卡的 `countsTowardLimitedRecharge` 为 `true`；其他付费项目必须在各自数据中明确，不得自行推断。
+- 所有人民币付费项目默认 `countsTowardLimitedRecharge: true`；只有用户明确指出“不计入限时累充”时，才可设为 `false`。
 - 不得建立独立的“氪金.md”或重复的中央氪金表；`price`、`countsTowardLimitedRecharge` 等属性必须跟随具体付费项目保存。
 - 新人和等级礼包归入 permanent pack 数据；活动礼包以及季卡、年卡、猫条等限时购买行为归入 event pack / 活动礼包数据。不得在多个数据文件中重复维护同一付费项目的价格或累充属性。
 
@@ -116,6 +120,16 @@
 - 颜料周礼包必须通过 `purchaseRule` 保留“每周限购 1 次”的语义，不得等同为整个计算区间固定 `purchaseLimit: 1`；按区间计算可购次数须等待明确的后续实现。
 - 购买结果按 `contents × 实际购买数量` 增加资源，并按 `price × 实际购买数量` 累计人民币金额；`countsTowardLimitedRecharge` 仅作为内部属性保存，当前不得据此实现限时累充统计。
 - 模块默认折叠；折叠仅影响展示，不得改变购买状态或计算结果。
+
+## 活动礼包约束
+
+- “六、活动礼包”为默认折叠的一级模块，其下必须支持同时显示多个 Event Pack 二级分组。
+- Event Pack 数据存放在 `data/packs/event-packs/`，每个礼包 Event 使用一个 JSON 文件维护。
+- Event 与 Event Pack 是独立实体，通过稳定 `eventId` 关联；Event 可以没有对应礼包，Event Pack 不得与 Banner 强制绑定。
+- `contents` 只保存参与攒抽计算的资源；`otherContents` 只用于记录或展示非抽卡奖励；`deferredRewards` 表示延期奖励，不自动计入当前抽卡资源。
+- `purchaseRule.type = total` 表示整个 Event Pack 有效期内的总限购，`purchaseRule.type = daily` 表示每日限购。
+- `prerequisites` 使用稳定 pack id 表示购买前置关系；`pull_count` trigger 与前置关系分离，当前只展示触发条件，不自动判断解锁。
+- 同一礼包内重复的同一种抽卡资源可以合并记录。
 
 ## 技术原则
 

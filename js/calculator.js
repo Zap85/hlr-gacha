@@ -48,13 +48,14 @@ function calculateDateRange(currentDate, targetDate) {
     return { valid: false, days: null, error: "目标日期格式无效。" };
   }
 
-  const days = (targetTimestamp - currentTimestamp) / MILLISECONDS_PER_DAY;
+  const days =
+    (targetTimestamp - currentTimestamp) / MILLISECONDS_PER_DAY + 1;
 
   if (days <= 0) {
     return {
       valid: false,
       days: null,
-      error: "目标日期必须晚于当前日期。",
+      error: "目标日期不得早于当前日期。",
     };
   }
 
@@ -81,14 +82,23 @@ function parseInventoryAmount(value) {
   return { valid: true, amount, error: null };
 }
 
-function calculateFreeDailyAccumulation(currentDate, targetDate, rules) {
+function calculateFreeDailyAccumulation(
+  currentDate,
+  targetDate,
+  rules,
+  todayIncomeClaimed = true,
+) {
   const dateRange = calculateDateRange(currentDate, targetDate);
 
   if (!dateRange.valid) {
     return { valid: false, error: dateRange.error };
   }
 
-  const dailyTaskDiamonds = dateRange.days * rules.dailyTaskDiamonds;
+  const incomeDays = Math.max(
+    0,
+    dateRange.days - (todayIncomeClaimed ? 1 : 0),
+  );
+  const dailyTaskDiamonds = incomeDays * rules.dailyTaskDiamonds;
   let weeklyShareCount = 0;
   let monthlySignInCount = 0;
   let monthlySignInDiamonds = 0;
@@ -96,7 +106,9 @@ function calculateFreeDailyAccumulation(currentDate, targetDate, rules) {
   const targetTimestamp = parseCalendarDate(targetDate);
 
   for (
-    let timestamp = parseCalendarDate(currentDate) + MILLISECONDS_PER_DAY;
+    let timestamp =
+      parseCalendarDate(currentDate) +
+      (todayIncomeClaimed ? MILLISECONDS_PER_DAY : 0);
     timestamp <= targetTimestamp;
     timestamp += MILLISECONDS_PER_DAY
   ) {
@@ -127,9 +139,9 @@ function calculateFreeDailyAccumulation(currentDate, targetDate, rules) {
   return {
     valid: true,
     error: null,
-    days: dateRange.days,
+    days: incomeDays,
     dailyTasks: {
-      days: dateRange.days,
+      days: incomeDays,
       diamonds: dailyTaskDiamonds,
     },
     weeklyShares: {
@@ -158,6 +170,7 @@ function calculateIncomeCards(
   monthlySignInDiamonds,
   rules,
   selections,
+  todayIncomeClaimed = true,
 ) {
   const dateRange = calculateDateRange(currentDate, targetDate);
 
@@ -169,15 +182,19 @@ function calculateIncomeCards(
     return { valid: false, error: "月卡调整值必须是整数。" };
   }
 
+  const incomeDays = Math.max(
+    0,
+    dateRange.days - (todayIncomeClaimed ? 1 : 0),
+  );
   const monthlyCardBasePurchases = Math.ceil(
-    dateRange.days / rules.monthlyCard.durationDays,
+    incomeDays / rules.monthlyCard.durationDays,
   );
   const monthlyCardActualPurchases = Math.max(
     0,
     monthlyCardBasePurchases + selections.monthlyCardAdjustment,
   );
   const monthlyCardDailyDiamonds = selections.monthlyCardSelected
-    ? dateRange.days * rules.monthlyCard.dailyDiamonds
+    ? incomeDays * rules.monthlyCard.dailyDiamonds
     : 0;
   const monthlyCardPurchaseDiamonds = selections.monthlyCardSelected
     ? monthlyCardActualPurchases * rules.monthlyCard.purchaseDiamonds
@@ -186,14 +203,16 @@ function calculateIncomeCards(
     ? monthlyCardActualPurchases * rules.monthlyCard.priceRmb
     : 0;
   const seasonalCardDailyDiamonds = selections.seasonalCardSelected
-    ? dateRange.days * rules.seasonalCard.dailyDiamonds
+    ? incomeDays * rules.seasonalCard.dailyDiamonds
     : 0;
   let annualCardRewardCount = 0;
   let catTreatRewardCount = 0;
   const targetTimestamp = parseCalendarDate(targetDate);
 
   for (
-    let timestamp = parseCalendarDate(currentDate) + MILLISECONDS_PER_DAY;
+    let timestamp =
+      parseCalendarDate(currentDate) +
+      (todayIncomeClaimed ? MILLISECONDS_PER_DAY : 0);
     timestamp <= targetTimestamp;
     timestamp += MILLISECONDS_PER_DAY
   ) {
@@ -481,5 +500,276 @@ function calculatePermanentPackPurchases(packs, quantities) {
     totalPrice,
     resources,
     purchases,
+  };
+}
+
+function isEventPackVisible(targetDate, eventPack) {
+  const targetTimestamp = parseCalendarDate(targetDate);
+  const startTimestamp = parseCalendarDate(eventPack.startDate);
+
+  return (
+    targetTimestamp !== null &&
+    startTimestamp !== null &&
+    targetTimestamp >= startTimestamp
+  );
+}
+
+function getDisplayableEventPacks(eventPacks, targetDate) {
+  return eventPacks.filter((eventPack) =>
+    isEventPackVisible(targetDate, eventPack),
+  );
+}
+
+function calculateEventPackDailyAvailability(
+  currentDate,
+  targetDate,
+  eventPack,
+  dailyLimit,
+) {
+  const currentTimestamp = parseCalendarDate(currentDate);
+  const targetTimestamp = parseCalendarDate(targetDate);
+  const startTimestamp = parseCalendarDate(eventPack.startDate);
+  const endTimestamp = parseCalendarDate(eventPack.endDate);
+
+  if (
+    currentTimestamp === null ||
+    targetTimestamp === null ||
+    startTimestamp === null ||
+    endTimestamp === null ||
+    targetTimestamp < currentTimestamp ||
+    endTimestamp < startTimestamp ||
+    !Number.isSafeInteger(dailyLimit) ||
+    dailyLimit <= 0
+  ) {
+    return {
+      valid: false,
+      days: 0,
+      maximumQuantity: 0,
+      error: "活动礼包日期或每日限购规则无效。",
+    };
+  }
+
+  const firstAvailableTimestamp = Math.max(
+    currentTimestamp,
+    startTimestamp,
+  );
+  const lastAvailableTimestamp = Math.min(targetTimestamp, endTimestamp);
+  const days =
+    firstAvailableTimestamp > lastAvailableTimestamp
+      ? 0
+      : (lastAvailableTimestamp - firstAvailableTimestamp) /
+          MILLISECONDS_PER_DAY +
+        1;
+
+  return {
+    valid: true,
+    days,
+    maximumQuantity: days * dailyLimit,
+    error: null,
+  };
+}
+
+function getEventPackMaximumQuantity(
+  pack,
+  eventPack,
+  currentDate,
+  targetDate,
+) {
+  if (!isEventPackVisible(targetDate, eventPack)) {
+    return 0;
+  }
+
+  if (pack.purchaseRule.type === "daily") {
+    return calculateEventPackDailyAvailability(
+      currentDate,
+      targetDate,
+      eventPack,
+      pack.purchaseRule.limit,
+    ).maximumQuantity;
+  }
+
+  return pack.purchaseRule.limit;
+}
+
+function createEventPackPurchaseState(eventPacks) {
+  return Object.fromEntries(
+    eventPacks.map((eventPack) => [
+      eventPack.id,
+      Object.fromEntries(
+        eventPack.packs.map((pack) => [
+          pack.id,
+          { selected: false, quantity: 0 },
+        ]),
+      ),
+    ]),
+  );
+}
+
+function normalizeEventPackPurchases(
+  eventPack,
+  purchases,
+  currentDate,
+  targetDate,
+) {
+  const normalized = Object.fromEntries(
+    eventPack.packs.map((pack) => {
+      const purchase = purchases?.[pack.id];
+      const maximumQuantity = getEventPackMaximumQuantity(
+        pack,
+        eventPack,
+        currentDate,
+        targetDate,
+      );
+      const requestedQuantity = Number.isSafeInteger(purchase?.quantity)
+        ? purchase.quantity
+        : 0;
+      const quantity = purchase?.selected
+        ? Math.min(Math.max(requestedQuantity, 1), maximumQuantity)
+        : 0;
+
+      return [
+        pack.id,
+        { selected: quantity > 0, quantity },
+      ];
+    }),
+  );
+
+  let changed;
+
+  do {
+    changed = false;
+
+    eventPack.packs.forEach((pack) => {
+      const purchase = normalized[pack.id];
+      const prerequisitesSatisfied = pack.prerequisites.every(
+        (prerequisiteId) => normalized[prerequisiteId]?.selected,
+      );
+
+      if (purchase.selected && !prerequisitesSatisfied) {
+        normalized[pack.id] = { selected: false, quantity: 0 };
+        changed = true;
+      }
+    });
+  } while (changed);
+
+  return normalized;
+}
+
+function updateEventPackPurchase(
+  eventPack,
+  purchases,
+  packId,
+  selected,
+  quantity,
+  currentDate,
+  targetDate,
+) {
+  const pack = eventPack.packs.find((item) => item.id === packId);
+
+  if (!pack) {
+    return { valid: false, error: "未知的活动礼包。", purchases };
+  }
+
+  const currentPurchases = normalizeEventPackPurchases(
+    eventPack,
+    purchases,
+    currentDate,
+    targetDate,
+  );
+
+  if (!selected) {
+    currentPurchases[packId] = { selected: false, quantity: 0 };
+    return {
+      valid: true,
+      error: null,
+      purchases: normalizeEventPackPurchases(
+        eventPack,
+        currentPurchases,
+        currentDate,
+        targetDate,
+      ),
+    };
+  }
+
+  const prerequisitesSatisfied = pack.prerequisites.every(
+    (prerequisiteId) => currentPurchases[prerequisiteId]?.selected,
+  );
+  const maximumQuantity = getEventPackMaximumQuantity(
+    pack,
+    eventPack,
+    currentDate,
+    targetDate,
+  );
+
+  if (!prerequisitesSatisfied) {
+    return {
+      valid: false,
+      error: `需先购买：${pack.prerequisites.join("、")}`,
+      purchases: currentPurchases,
+    };
+  }
+
+  if (
+    !Number.isSafeInteger(quantity) ||
+    quantity < 1 ||
+    quantity > maximumQuantity
+  ) {
+    return {
+      valid: false,
+      error: `购买数量必须为 1～${maximumQuantity}。`,
+      purchases: currentPurchases,
+    };
+  }
+
+  currentPurchases[packId] = { selected: true, quantity };
+  return { valid: true, error: null, purchases: currentPurchases };
+}
+
+function calculateEventPackPurchaseSummary(
+  eventPacks,
+  purchaseState,
+  currentDate,
+  targetDate,
+) {
+  const resources = {};
+  const normalizedState = {};
+  let totalPrice = 0;
+  let limitedRechargePrice = 0;
+
+  eventPacks.forEach((eventPack) => {
+    const purchases = normalizeEventPackPurchases(
+      eventPack,
+      purchaseState?.[eventPack.id],
+      currentDate,
+      targetDate,
+    );
+    normalizedState[eventPack.id] = purchases;
+
+    eventPack.packs.forEach((pack) => {
+      const quantity = purchases[pack.id].quantity;
+
+      if (quantity === 0) {
+        return;
+      }
+
+      const purchasePrice = pack.price * quantity;
+      totalPrice += purchasePrice;
+
+      if (pack.countsTowardLimitedRecharge) {
+        limitedRechargePrice += purchasePrice;
+      }
+
+      pack.contents.forEach(({ resourceId, amount }) => {
+        resources[resourceId] =
+          (resources[resourceId] ?? 0) + amount * quantity;
+      });
+    });
+  });
+
+  return {
+    totalPrice,
+    limitedRechargePrice,
+    resources,
+    purchaseState: normalizedState,
   };
 }

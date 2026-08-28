@@ -14,9 +14,10 @@ vm.runInContext(calculatorCode, context);
 const calculateDateRange = vm.runInContext("calculateDateRange", context);
 
 const cases = [
-  ["2026-07-01", "2026-07-21", 20],
-  ["2026-07-01", "2026-07-31", 30],
-  ["2026-07-31", "2026-08-01", 1],
+  ["2026-07-01", "2026-07-21", 21],
+  ["2026-07-01", "2026-07-31", 31],
+  ["2026-07-31", "2026-08-01", 2],
+  ["2026-07-01", "2026-07-01", 1],
 ];
 
 for (const [currentDate, targetDate, expectedDays] of cases) {
@@ -28,14 +29,13 @@ for (const [currentDate, targetDate, expectedDays] of cases) {
 }
 
 for (const [currentDate, targetDate] of [
-  ["2026-07-01", "2026-07-01"],
   ["2026-07-21", "2026-07-01"],
 ]) {
   const result = calculateDateRange(currentDate, targetDate);
 
   assert.equal(result.valid, false);
   assert.equal(result.days, null);
-  assert.equal(result.error, "目标日期必须晚于当前日期。");
+  assert.equal(result.error, "目标日期不得早于当前日期。");
 }
 
 console.log("calculator.js: 5 date range tests passed");

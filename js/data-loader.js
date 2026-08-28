@@ -7,6 +7,7 @@ const CONSTANTS_PATH = "data/constants.json";
 const EVENT_TYPES_PATH = "data/events/event-types.json";
 const EVENTS_PATH = "data/events/sample-event.json";
 const PERMANENT_PACKS_PATH = "data/permanent-packs.json";
+const EVENT_PACK_PATHS = ["data/packs/event-packs/庄园诡戏.json"];
 
 function isValidCalendarDate(value) {
   if (typeof value !== "string") {
@@ -452,4 +453,176 @@ async function loadPermanentPackRules(path = CONSTANTS_PATH) {
   }
 
   return rules;
+}
+
+function isValidEventPackContent(content, validResourceIds) {
+  return (
+    content !== null &&
+    typeof content === "object" &&
+    typeof content.resourceId === "string" &&
+    validResourceIds.has(content.resourceId) &&
+    Number.isSafeInteger(content.amount) &&
+    content.amount > 0
+  );
+}
+
+function isValidEventPackOtherContent(content) {
+  return (
+    content !== null &&
+    typeof content === "object" &&
+    typeof content.name === "string" &&
+    content.name.trim() !== "" &&
+    Number.isSafeInteger(content.amount) &&
+    content.amount > 0
+  );
+}
+
+function isValidEventPackDeferredReward(reward) {
+  return (
+    isValidEventPackOtherContent(reward) &&
+    isValidCalendarDate(reward.availableDate) &&
+    (reward.note === undefined || typeof reward.note === "string")
+  );
+}
+
+function isValidEventPackPurchaseRule(purchaseRule) {
+  return (
+    purchaseRule !== null &&
+    typeof purchaseRule === "object" &&
+    ["total", "daily"].includes(purchaseRule.type) &&
+    Number.isSafeInteger(purchaseRule.limit) &&
+    purchaseRule.limit > 0
+  );
+}
+
+function isValidEventPackTrigger(trigger) {
+  return (
+    trigger === null ||
+    (typeof trigger === "object" &&
+      trigger.type === "pull_count" &&
+      Number.isSafeInteger(trigger.value) &&
+      trigger.value >= 0)
+  );
+}
+
+function isValidEventPackItem(pack, validResourceIds) {
+  if (
+    pack === null ||
+    typeof pack !== "object" ||
+    typeof pack.id !== "string" ||
+    pack.id.trim() === "" ||
+    typeof pack.name !== "string" ||
+    pack.name.trim() === "" ||
+    typeof pack.price !== "number" ||
+    !Number.isFinite(pack.price) ||
+    pack.price < 0 ||
+    typeof pack.countsTowardLimitedRecharge !== "boolean" ||
+    !isValidEventPackPurchaseRule(pack.purchaseRule) ||
+    !Array.isArray(pack.contents) ||
+    !pack.contents.every((content) =>
+      isValidEventPackContent(content, validResourceIds),
+    ) ||
+    !Array.isArray(pack.otherContents) ||
+    !pack.otherContents.every(isValidEventPackOtherContent) ||
+    !Array.isArray(pack.prerequisites) ||
+    !pack.prerequisites.every(
+      (prerequisite) =>
+        typeof prerequisite === "string" && prerequisite.trim() !== "",
+    ) ||
+    !isValidEventPackTrigger(pack.trigger) ||
+    !Array.isArray(pack.deferredRewards) ||
+    !pack.deferredRewards.every(isValidEventPackDeferredReward)
+  ) {
+    return false;
+  }
+
+  const contentResourceIds = new Set(
+    pack.contents.map((content) => content.resourceId),
+  );
+  return contentResourceIds.size === pack.contents.length;
+}
+
+function sanitizeEventPack(eventPack, validResourceIds) {
+  if (
+    eventPack === null ||
+    typeof eventPack !== "object" ||
+    typeof eventPack.id !== "string" ||
+    eventPack.id.trim() === "" ||
+    typeof eventPack.name !== "string" ||
+    eventPack.name.trim() === "" ||
+    typeof eventPack.eventId !== "string" ||
+    eventPack.eventId.trim() === "" ||
+    !isValidCalendarDate(eventPack.startDate) ||
+    !isValidCalendarDate(eventPack.endDate) ||
+    eventPack.startDate > eventPack.endDate ||
+    !Array.isArray(eventPack.packs)
+  ) {
+    return null;
+  }
+
+  const packIds = new Set();
+  let packs = eventPack.packs.filter((pack) => {
+    if (
+      !isValidEventPackItem(pack, validResourceIds) ||
+      packIds.has(pack.id)
+    ) {
+      return false;
+    }
+
+    packIds.add(pack.id);
+    return true;
+  });
+
+  let previousLength;
+
+  do {
+    previousLength = packs.length;
+    const validPackIds = new Set(packs.map((pack) => pack.id));
+    packs = packs.filter((pack) =>
+      pack.prerequisites.every(
+        (prerequisite) =>
+          prerequisite !== pack.id && validPackIds.has(prerequisite),
+      ),
+    );
+  } while (packs.length !== previousLength);
+
+  return { ...eventPack, packs };
+}
+
+async function loadEventPacks(
+  paths = EVENT_PACK_PATHS,
+  resourceTypePath = RESOURCE_TYPES_PATH,
+  resourceInstancesPath = RESOURCE_INSTANCES_PATH,
+) {
+  const [resourceTypes, resourceInstances, eventPackData] = await Promise.all([
+    loadResourceTypes(resourceTypePath),
+    loadResourceInstances(resourceInstancesPath),
+    Promise.all(
+      paths.map(async (path) => {
+        const response = await fetch(path);
+
+        if (!response.ok) {
+          throw new Error(`无法读取活动礼包数据：${path}`);
+        }
+
+        return response.json();
+      }),
+    ),
+  ]);
+  const validResourceIds = new Set([
+    ...resourceTypes.map((resourceType) => resourceType.id),
+    ...resourceInstances.map((resource) => resource.id),
+  ]);
+  const eventPackIds = new Set();
+
+  return eventPackData
+    .map((eventPack) => sanitizeEventPack(eventPack, validResourceIds))
+    .filter((eventPack) => {
+      if (eventPack === null || eventPackIds.has(eventPack.id)) {
+        return false;
+      }
+
+      eventPackIds.add(eventPack.id);
+      return true;
+    });
 }

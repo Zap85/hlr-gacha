@@ -132,6 +132,53 @@ const excludesCurrentTwentyThird = calculateIncomeCards(
 assert.equal(excludesCurrentTwentyThird.annualCard.rewardCount, 0);
 assert.equal(excludesCurrentTwentyThird.catTreat.rewardCount, 0);
 
+const includesCurrentTwentyThird = calculateIncomeCards(
+  "2026-07-23",
+  "2026-08-22",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    annualCardSelected: true,
+    catTreatSelected: true,
+  },
+  false,
+);
+assert.equal(includesCurrentTwentyThird.annualCard.rewardCount, 1);
+assert.equal(includesCurrentTwentyThird.annualCard.commonPaint, 5);
+assert.equal(includesCurrentTwentyThird.catTreat.rewardCount, 1);
+assert.equal(includesCurrentTwentyThird.catTreat.commonPaint, 1);
+
+const sameDayCardsClaimed = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-01",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    seasonalCardSelected: true,
+  },
+  true,
+);
+const sameDayCardsUnclaimed = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-01",
+  30,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    seasonalCardSelected: true,
+  },
+  false,
+);
+assert.equal(sameDayCardsClaimed.monthlyCard.dailyDiamonds, 0);
+assert.equal(sameDayCardsClaimed.seasonalCard.dailyDiamonds, 0);
+assert.equal(sameDayCardsUnclaimed.monthlyCard.dailyDiamonds, 50);
+assert.equal(sameDayCardsUnclaimed.seasonalCard.dailyDiamonds, 50);
+assert.equal(sameDayCardsUnclaimed.monthlySignInDiamonds, 60);
+
 const crossesTwoTwentyThirds = calculateIncomeCards(
   "2026-07-22",
   "2026-08-23",

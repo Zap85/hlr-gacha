@@ -135,6 +135,28 @@ fieldset {
   gap: 1rem;
 }
 
+.daily-income-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.daily-income-toggle input {
+  width: auto;
+  margin-top: 0.25rem;
+}
+
+.daily-income-toggle span,
+.daily-income-toggle small {
+  display: block;
+}
+
+.daily-income-toggle small {
+  margin-top: 0.2rem;
+  color: #555;
+}
+
 .accumulation-summary div {
   padding: 0.75rem;
   border: 1px solid #ccc;
@@ -255,6 +277,61 @@ fieldset {
   gap: 0.5rem;
 }
 
+.event-pack-groups,
+.event-pack-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.event-pack-group {
+  margin-top: 0;
+}
+
+.event-pack-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.event-pack-card {
+  padding: 0.75rem;
+}
+
+.event-pack-card h4,
+.event-pack-card p {
+  margin: 0;
+}
+
+.event-pack-card p {
+  margin-top: 0.375rem;
+}
+
+.income-card.is-disabled {
+  cursor: not-allowed;
+  color: #666;
+  background: #f5f5f5;
+}
+
+.event-pack-summary {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.event-pack-summary[hidden] {
+  display: none;
+}
+
+.event-pack-summary div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.event-pack-summary dd {
+  margin: 0;
+}
+
 @media (max-width: 32rem) {
   .date-fields {
     grid-template-columns: 1fr;
@@ -281,6 +358,10 @@ fieldset {
   }
 
   .permanent-pack-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-pack-card-grid {
     grid-template-columns: 1fr;
   }
 

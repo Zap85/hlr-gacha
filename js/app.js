@@ -18,6 +18,9 @@ const incomeCardSelections = {
   annualCardSelected: false,
   catTreatSelected: false,
 };
+const dailyIncomeSettings = {
+  todayIncomeClaimed: true,
+};
 let freeDailyAccumulationRules = null;
 let freeDailyAccumulationView = null;
 let incomeCardRules = null;
@@ -42,6 +45,17 @@ let permanentPackView = null;
 let permanentPacks = [];
 let permanentPackRules = null;
 let permanentPackResourceTypes = [];
+const eventPackPurchaseState = {
+  purchases: {},
+  resources: {},
+  totalPrice: 0,
+  limitedRechargePrice: 0,
+};
+let eventPackView = null;
+let eventPacks = [];
+let eventPackResourceNames = new Map();
+let eventPacksLoading = true;
+let eventPacksLoadError = "";
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -169,6 +183,7 @@ function updateFreeDailyAccumulationResult() {
     dateSelectionState.currentDate,
     dateSelectionState.targetDate,
     freeDailyAccumulationRules,
+    dailyIncomeSettings.todayIncomeClaimed,
   );
 
   if (!result.valid) {
@@ -188,6 +203,7 @@ function updateFreeDailyAccumulationResult() {
     result.monthlySignIns.diamonds,
     incomeCardRules,
     incomeCardSelections,
+    dailyIncomeSettings.todayIncomeClaimed,
   );
 
   if (!cardResult.valid) {
@@ -565,6 +581,258 @@ function renderPermanentPacks() {
   });
 }
 
+function formatEventPackContents(contents) {
+  if (contents.length === 0) {
+    return "无";
+  }
+
+  return contents
+    .map(
+      ({ resourceId, amount }) =>
+        `${eventPackResourceNames.get(resourceId) ?? resourceId}×${amount}`,
+    )
+    .join("，");
+}
+
+function formatEventPackOtherContents(contents) {
+  return contents
+    .map(({ name, amount }) => `${name}×${amount}`)
+    .join("，");
+}
+
+function createEventPackCard(eventPack, pack, purchases) {
+  const purchase = purchases[pack.id];
+  const maximumQuantity = getEventPackMaximumQuantity(
+    pack,
+    eventPack,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+  const prerequisitesSatisfied = pack.prerequisites.every(
+    (prerequisiteId) => purchases[prerequisiteId]?.selected,
+  );
+  const disabled = maximumQuantity === 0 || !prerequisitesSatisfied;
+  const card = document.createElement("article");
+  const header = document.createElement("header");
+  const heading = document.createElement("h4");
+  const price = document.createElement("span");
+  const contents = document.createElement("p");
+  const purchaseRule = document.createElement("p");
+
+  card.className = "income-card event-pack-card";
+  card.classList.toggle("is-selected", purchase.selected);
+  card.classList.toggle("is-disabled", disabled);
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-pressed", String(purchase.selected));
+  card.setAttribute("aria-disabled", String(disabled));
+  heading.textContent = pack.name;
+  price.className = "permanent-pack-price";
+  price.textContent = `¥${pack.price}`;
+  header.append(heading, price);
+  contents.textContent =
+    `抽卡相关资源：${formatEventPackContents(pack.contents)}`;
+  purchaseRule.textContent =
+    pack.purchaseRule.type === "daily"
+      ? `每日限购 ${pack.purchaseRule.limit} 次；当前区间最多 ${maximumQuantity} 份`
+      : `活动期间限购 ${pack.purchaseRule.limit} 次`;
+  card.append(header, contents);
+
+  if (pack.otherContents.length > 0) {
+    const otherContents = document.createElement("p");
+    otherContents.textContent =
+      `其他奖励：${formatEventPackOtherContents(pack.otherContents)}`;
+    card.append(otherContents);
+  }
+
+  card.append(purchaseRule);
+
+  if (pack.prerequisites.length > 0) {
+    const prerequisites = document.createElement("p");
+    prerequisites.textContent =
+      `需先购买：${pack.prerequisites.join("、")}`;
+    card.append(prerequisites);
+  }
+
+  if (pack.trigger !== null) {
+    const trigger = document.createElement("p");
+    trigger.textContent = `抽卡达到 ${pack.trigger.value} 次后触发`;
+    card.append(trigger);
+  }
+
+  pack.deferredRewards.forEach((reward) => {
+    const deferredReward = document.createElement("p");
+    const note = reward.note ? `；${reward.note}` : "";
+    deferredReward.textContent =
+      `购买后可获得：${reward.name}×${reward.amount}${note}`;
+    card.append(deferredReward);
+  });
+
+  if (maximumQuantity > 1 && purchase.selected) {
+    const quantityLabel = document.createElement("label");
+    const quantityInput = document.createElement("input");
+
+    quantityLabel.className = "permanent-pack-quantity";
+    quantityLabel.append("购买数量", quantityInput);
+    quantityInput.type = "number";
+    quantityInput.min = "1";
+    quantityInput.max = String(maximumQuantity);
+    quantityInput.step = "1";
+    quantityInput.value = String(purchase.quantity);
+    quantityInput.addEventListener("input", () => {
+      const result = updateEventPackPurchase(
+        eventPack,
+        purchases,
+        pack.id,
+        true,
+        Number(quantityInput.value),
+        dateSelectionState.currentDate,
+        dateSelectionState.targetDate,
+      );
+
+      if (!result.valid) {
+        eventPackView.error.textContent = result.error;
+        return;
+      }
+
+      eventPackPurchaseState.purchases[eventPack.id] = result.purchases;
+      updateEventPacksResult();
+    });
+    card.append(quantityLabel);
+  } else {
+    const quantity = document.createElement("p");
+    quantity.textContent = `购买数量：${purchase.quantity}`;
+    card.append(quantity);
+  }
+
+  function togglePack() {
+    if (disabled) {
+      return;
+    }
+
+    const result = updateEventPackPurchase(
+      eventPack,
+      purchases,
+      pack.id,
+      !purchase.selected,
+      1,
+      dateSelectionState.currentDate,
+      dateSelectionState.targetDate,
+    );
+
+    if (!result.valid) {
+      eventPackView.error.textContent = result.error;
+      return;
+    }
+
+    eventPackPurchaseState.purchases[eventPack.id] = result.purchases;
+    updateEventPacksResult();
+  }
+
+  card.addEventListener("click", (event) => {
+    if (event.target.closest("input, label")) {
+      return;
+    }
+
+    togglePack();
+  });
+  card.addEventListener("keydown", (event) => {
+    if (
+      event.target === card &&
+      (event.key === "Enter" || event.key === " ")
+    ) {
+      event.preventDefault();
+      togglePack();
+    }
+  });
+
+  return card;
+}
+
+function renderEventPackGroups(displayableEventPacks) {
+  eventPackView.groups.replaceChildren();
+
+  displayableEventPacks.forEach((eventPack, index) => {
+    const group = document.createElement("section");
+    const heading = document.createElement("h3");
+    const list = document.createElement("div");
+    const headingId = `event-pack-group-${index}`;
+    const purchases = eventPackPurchaseState.purchases[eventPack.id];
+
+    group.className = "event-pack-group";
+    group.setAttribute("aria-labelledby", headingId);
+    heading.id = headingId;
+    heading.textContent = eventPack.name;
+    list.className = "event-pack-card-grid";
+    eventPack.packs.forEach((pack) => {
+      list.append(createEventPackCard(eventPack, pack, purchases));
+    });
+    group.append(heading, list);
+    eventPackView.groups.append(group);
+  });
+}
+
+function updateEventPacksResult() {
+  if (!eventPackView) {
+    return;
+  }
+
+  eventPackView.groups.replaceChildren();
+  eventPackView.summary.hidden = true;
+  eventPackView.error.textContent = "";
+
+  if (eventPacksLoading) {
+    eventPackView.message.textContent = "正在加载活动礼包数据。";
+    return;
+  }
+
+  if (eventPacksLoadError) {
+    eventPackView.message.textContent = "";
+    eventPackView.error.textContent = eventPacksLoadError;
+    return;
+  }
+
+  if (!dateSelectionState.targetDate) {
+    eventPackView.message.textContent = "请选择有效的目标日期。";
+    return;
+  }
+
+  const summary = calculateEventPackPurchaseSummary(
+    eventPacks,
+    eventPackPurchaseState.purchases,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+  eventPackPurchaseState.purchases = summary.purchaseState;
+  eventPackPurchaseState.resources = summary.resources;
+  eventPackPurchaseState.totalPrice = summary.totalPrice;
+  eventPackPurchaseState.limitedRechargePrice =
+    summary.limitedRechargePrice;
+  const displayableEventPacks = getDisplayableEventPacks(
+    eventPacks,
+    dateSelectionState.targetDate,
+  );
+
+  if (displayableEventPacks.length === 0) {
+    eventPackView.message.textContent =
+      "当前目标日期没有可计入的活动礼包。";
+    return;
+  }
+
+  eventPackView.message.textContent = "";
+  eventPackView.summary.hidden = false;
+  eventPackView.totalPrice.textContent = `¥${summary.totalPrice}`;
+  eventPackView.limitedRechargePrice.textContent =
+    `¥${summary.limitedRechargePrice}`;
+  eventPackView.resources.textContent = formatEventPackContents(
+    Object.entries(summary.resources).map(([resourceId, amount]) => ({
+      resourceId,
+      amount,
+    })),
+  );
+  renderEventPackGroups(displayableEventPacks);
+}
+
 function resolveTargetDate(mode, banner, bannerDateType, customTargetDate) {
   if (mode === "custom") {
     return customTargetDate;
@@ -622,6 +890,7 @@ function initializeDateModule() {
     dateSelectionState.targetMode = mode;
     updateFreeDailyAccumulationResult();
     updateEventIncomeResult();
+    updateEventPacksResult();
 
     actualTargetDate.textContent = targetDate || "—";
     calculatedDays.textContent = "—";
@@ -985,6 +1254,9 @@ function initializeInventoryModule() {
 }
 
 function initializeFreeDailyAccumulationModule() {
+  const todayIncomeClaimed = document.querySelector(
+    "#today-income-claimed",
+  );
   freeDailyAccumulationView = {
     dailyTasks: document.querySelector("#daily-task-result"),
     weeklyShares: document.querySelector("#weekly-share-result"),
@@ -1015,6 +1287,11 @@ function initializeFreeDailyAccumulationModule() {
     incomeCardView.monthlyCard,
     "monthlyCardSelected",
   );
+
+  todayIncomeClaimed.addEventListener("change", () => {
+    dailyIncomeSettings.todayIncomeClaimed = todayIncomeClaimed.checked;
+    updateFreeDailyAccumulationResult();
+  });
   makeIncomeCardSelectable(
     incomeCardView.seasonalCard,
     "seasonalCardSelected",
@@ -1142,10 +1419,57 @@ function initializePermanentPacksModule() {
     });
 }
 
+function initializeEventPacksModule() {
+  eventPackView = {
+    groups: document.querySelector("#event-pack-groups"),
+    message: document.querySelector("#event-packs-message"),
+    summary: document.querySelector("#event-pack-summary"),
+    totalPrice: document.querySelector("#event-pack-total-price"),
+    limitedRechargePrice: document.querySelector(
+      "#event-pack-limited-recharge-price",
+    ),
+    resources: document.querySelector("#event-pack-resource-summary"),
+    error: document.querySelector("#event-packs-error"),
+  };
+
+  Promise.all([
+    loadEventPacks(),
+    loadResourceTypes(),
+    loadResourceInstances(),
+  ])
+    .then(([loadedEventPacks, resourceTypes, resourceInstances]) => {
+      eventPacks = loadedEventPacks;
+      eventPackResourceNames = new Map([
+        ...resourceTypes.map((resourceType) => [
+          resourceType.id,
+          resourceType.name,
+        ]),
+        ...resourceInstances
+          .filter((resource) => typeof resource.name === "string")
+          .map((resource) => [resource.id, resource.name]),
+      ]);
+      eventPackPurchaseState.purchases =
+        createEventPackPurchaseState(eventPacks);
+      eventPacksLoadError =
+        eventPacks.length === 0 ? "没有可用的活动礼包数据。" : "";
+    })
+    .catch(() => {
+      eventPacks = [];
+      eventPackPurchaseState.purchases = {};
+      eventPacksLoadError =
+        "活动礼包数据加载失败，请使用本地开发服务器打开页面。";
+    })
+    .finally(() => {
+      eventPacksLoading = false;
+      updateEventPacksResult();
+    });
+}
+
 if (typeof document !== "undefined") {
   initializeDateModule();
   initializeInventoryModule();
   initializeFreeDailyAccumulationModule();
   initializeEventIncomeModule();
   initializePermanentPacksModule();
+  initializeEventPacksModule();
 }

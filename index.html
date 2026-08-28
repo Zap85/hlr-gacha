@@ -110,6 +110,13 @@
 
       <section aria-labelledby="free-accumulation-section-title">
         <h2 id="free-accumulation-section-title">三、日常收入</h2>
+        <label class="daily-income-toggle">
+          <input id="today-income-claimed" type="checkbox" checked>
+          <span>
+            今日收入已领取
+            <small>勾选后，不再重复计算今天的日常、签到及持续收益。</small>
+          </span>
+        </label>
         <dl class="accumulation-summary">
           <div>
             <dt>每日任务</dt>
@@ -196,6 +203,31 @@
             </label>
             <div id="permanent-pack-list" class="permanent-pack-grid"></div>
             <p id="permanent-pack-error" class="date-error" aria-live="polite"></p>
+          </div>
+        </details>
+      </section>
+
+      <section aria-labelledby="event-packs-section-title">
+        <details class="pack-disclosure event-packs-disclosure">
+          <summary id="event-packs-section-title">六、活动礼包</summary>
+          <div class="pack-disclosure-content">
+            <p id="event-packs-message" aria-live="polite">正在加载活动礼包数据。</p>
+            <div id="event-pack-groups" class="event-pack-groups"></div>
+            <dl id="event-pack-summary" class="event-pack-summary" hidden>
+              <div>
+                <dt>活动礼包金额</dt>
+                <dd><output id="event-pack-total-price">¥0</output></dd>
+              </div>
+              <div>
+                <dt>计入限时累充金额</dt>
+                <dd><output id="event-pack-limited-recharge-price">¥0</output></dd>
+              </div>
+              <div>
+                <dt>抽卡资源增加</dt>
+                <dd><output id="event-pack-resource-summary">无</output></dd>
+              </div>
+            </dl>
+            <p id="event-packs-error" class="date-error" aria-live="polite"></p>
           </div>
         </details>
       </section>

@@ -13,6 +13,7 @@ const constantsData = JSON.parse(
   readProjectFile(path.join("data", "constants.json")),
 );
 const rules = constantsData.constants.freeDailyAccumulation;
+const indexHtml = readProjectFile("index.html");
 const calculatorContext = vm.createContext({ Date });
 
 vm.runInContext(
@@ -23,6 +24,15 @@ vm.runInContext(
 const calculateFreeDailyAccumulation = vm.runInContext(
   "calculateFreeDailyAccumulation",
   calculatorContext,
+);
+
+assert.match(
+  indexHtml,
+  /<input id="today-income-claimed" type="checkbox" checked>/,
+);
+assert.equal(
+  (indexHtml.match(/id="today-income-claimed"/g) ?? []).length,
+  1,
 );
 
 const crossesMonday = calculateFreeDailyAccumulation(
@@ -41,6 +51,16 @@ const excludesCurrentMonday = calculateFreeDailyAccumulation(
 );
 assert.equal(excludesCurrentMonday.weeklyShares.count, 0);
 
+const includesCurrentMonday = calculateFreeDailyAccumulation(
+  "2026-07-06",
+  "2026-07-12",
+  rules,
+  false,
+);
+assert.equal(includesCurrentMonday.days, 7);
+assert.equal(includesCurrentMonday.weeklyShares.count, 1);
+assert.equal(includesCurrentMonday.dailyTasks.diamonds, 532);
+
 const includesTargetSignIn = calculateFreeDailyAccumulation(
   "2026-07-02",
   "2026-07-03",
@@ -55,6 +75,15 @@ const excludesCurrentSignIn = calculateFreeDailyAccumulation(
   rules,
 );
 assert.equal(excludesCurrentSignIn.monthlySignIns.count, 0);
+
+const includesCurrentSignIn = calculateFreeDailyAccumulation(
+  "2026-07-03",
+  "2026-07-04",
+  rules,
+  false,
+);
+assert.equal(includesCurrentSignIn.monthlySignIns.count, 1);
+assert.equal(includesCurrentSignIn.monthlySignIns.diamonds, 30);
 
 const crossesMonth = calculateFreeDailyAccumulation(
   "2026-07-30",
@@ -96,6 +125,31 @@ const excludesCurrentMonthEnd = calculateFreeDailyAccumulation(
   rules,
 );
 assert.equal(excludesCurrentMonthEnd.monthEndRewards.count, 0);
+
+const includesCurrentMonthEnd = calculateFreeDailyAccumulation(
+  "2026-01-31",
+  "2026-02-01",
+  rules,
+  false,
+);
+assert.equal(includesCurrentMonthEnd.monthEndRewards.count, 1);
+
+const sameDayClaimed = calculateFreeDailyAccumulation(
+  "2026-07-06",
+  "2026-07-06",
+  rules,
+  true,
+);
+const sameDayUnclaimed = calculateFreeDailyAccumulation(
+  "2026-07-06",
+  "2026-07-06",
+  rules,
+  false,
+);
+assert.equal(sameDayClaimed.days, 0);
+assert.equal(sameDayClaimed.weeklyShares.count, 0);
+assert.equal(sameDayUnclaimed.days, 1);
+assert.equal(sameDayUnclaimed.weeklyShares.count, 1);
 
 const requestedPaths = [];
 const loaderContext = vm.createContext({
