@@ -773,3 +773,162 @@ function calculateEventPackPurchaseSummary(
     purchaseState: normalizedState,
   };
 }
+
+const PRE_CONVERSION_RESOURCE_IDS = [
+  "diamond",
+  "red_diamond",
+  "common_paint",
+  "timed_paint",
+  "limited_paint",
+];
+
+function parseResourceAdjustment(value) {
+  if (value === "") {
+    return { valid: true, amount: 0, error: null };
+  }
+
+  const text = String(value);
+
+  if (!/^-?\d+$/.test(text)) {
+    return { valid: false, amount: null, error: "请输入整数。" };
+  }
+
+  const amount = Number(text);
+
+  if (!Number.isSafeInteger(amount)) {
+    return { valid: false, amount: null, error: "请输入整数。" };
+  }
+
+  return { valid: true, amount, error: null };
+}
+
+function isResourceInstanceAvailable(resource, targetDate, targetBanner) {
+  if (resource.category === "timed_paint") {
+    const targetTimestamp = parseCalendarDate(targetDate);
+    const availableTimestamp = parseCalendarDate(resource.availableFrom);
+    const expiresTimestamp = parseCalendarDate(resource.expiresAt);
+
+    return (
+      targetTimestamp !== null &&
+      availableTimestamp !== null &&
+      expiresTimestamp !== null &&
+      targetTimestamp >= availableTimestamp &&
+      targetTimestamp <= expiresTimestamp
+    );
+  }
+
+  if (resource.category !== "limited_paint" || !targetBanner) {
+    return false;
+  }
+
+  const applicability = resource.applicability;
+
+  if (applicability?.type === "banner_id") {
+    return applicability.values.includes(targetBanner.id);
+  }
+
+  if (applicability?.type === "banner_tag") {
+    const bannerTags = new Set(targetBanner.tags ?? []);
+    return applicability.values.some((tag) => bannerTags.has(tag));
+  }
+
+  return false;
+}
+
+function calculatePreConversionSummary({
+  resourceSources = [],
+  resourceAdjustments = {},
+  paymentSources = [],
+  resourceInstances = [],
+  targetDate = "",
+  targetBanner = null,
+} = {}) {
+  const resources = Object.fromEntries(
+    PRE_CONVERSION_RESOURCE_IDS.map((resourceId) => [resourceId, 0]),
+  );
+  const resourceInstancesById = new Map(
+    resourceInstances.map((resource) => [resource.id, resource]),
+  );
+
+  for (const source of resourceSources) {
+    for (const [resourceId, amount] of Object.entries(source ?? {})) {
+      if (
+        typeof amount !== "number" ||
+        !Number.isFinite(amount) ||
+        amount < 0
+      ) {
+        return { valid: false, error: "资源数量无效。" };
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(resources, resourceId)
+      ) {
+        resources[resourceId] += amount;
+        continue;
+      }
+
+      const resource = resourceInstancesById.get(resourceId);
+
+      if (
+        resource &&
+        isResourceInstanceAvailable(resource, targetDate, targetBanner)
+      ) {
+        resources[resource.category] += amount;
+      }
+    }
+  }
+
+  for (const [resourceId, amount] of Object.entries(resourceAdjustments)) {
+    if (!Number.isSafeInteger(amount)) {
+      return { valid: false, error: "资源调整量无效。" };
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(resources, resourceId)
+    ) {
+      resources[resourceId] += amount;
+    }
+  }
+
+  let rmbTotal = 0;
+  let limitedRechargeRmb = 0;
+
+  for (const payment of paymentSources) {
+    const amount = payment?.amount ?? 0;
+
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      amount < 0
+    ) {
+      return { valid: false, error: "人民币金额无效。" };
+    }
+
+    rmbTotal += amount;
+
+    if (payment.limitedRechargeAmount !== undefined) {
+      const limitedRechargeAmount = payment.limitedRechargeAmount;
+
+      if (
+        typeof limitedRechargeAmount !== "number" ||
+        !Number.isFinite(limitedRechargeAmount) ||
+        limitedRechargeAmount < 0 ||
+        limitedRechargeAmount > amount
+      ) {
+        return { valid: false, error: "限时累充金额无效。" };
+      }
+
+      limitedRechargeRmb += limitedRechargeAmount;
+    } else if (payment.countsTowardLimitedRecharge !== false) {
+      limitedRechargeRmb += amount;
+    }
+  }
+
+  return {
+    valid: true,
+    error: null,
+    resources,
+    rmbTotal,
+    limitedRechargeRmb,
+  };
+}

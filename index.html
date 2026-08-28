@@ -231,6 +231,71 @@
           </div>
         </details>
       </section>
+
+      <section aria-labelledby="other-section-title">
+        <h2 id="other-section-title">七、其他</h2>
+        <p>资源手动调整区。正数增加资源，负数扣除资源。</p>
+        <div class="inventory-fields">
+          <label class="inventory-field">
+            额外钻石
+            <input id="other-diamond" type="number" step="1" value="0" data-other-resource-id="diamond">
+          </label>
+          <label class="inventory-field">
+            额外红钻
+            <input id="other-red-diamond" type="number" step="1" value="0" data-other-resource-id="red_diamond">
+          </label>
+          <label class="inventory-field">
+            额外老荷兰颜料
+            <input id="other-common-paint" type="number" step="1" value="0" data-other-resource-id="common_paint">
+          </label>
+          <label class="inventory-field">
+            额外限时老荷兰
+            <span class="inventory-description">调整已确认可用于当前目标的总量</span>
+            <input id="other-timed-paint" type="number" step="1" value="0" data-other-resource-id="timed_paint">
+          </label>
+          <label class="inventory-field">
+            额外限定老荷兰
+            <span class="inventory-description">调整已确认可用于当前目标卡池的总量</span>
+            <input id="other-limited-paint" type="number" step="1" value="0" data-other-resource-id="limited_paint">
+          </label>
+        </div>
+        <p id="other-error" class="inventory-error" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="pre-conversion-section-title">
+        <h2 id="pre-conversion-section-title">八、资源总计（兑换前）</h2>
+        <dl class="accumulation-summary">
+          <div>
+            <dt>钻石</dt>
+            <dd><output id="pre-conversion-diamond">0</output></dd>
+          </div>
+          <div>
+            <dt>红钻</dt>
+            <dd><output id="pre-conversion-red-diamond">0</output></dd>
+          </div>
+          <div>
+            <dt>老荷兰颜料</dt>
+            <dd><output id="pre-conversion-common-paint">0</output></dd>
+          </div>
+          <div>
+            <dt>限时老荷兰</dt>
+            <dd><output id="pre-conversion-timed-paint">0</output></dd>
+          </div>
+          <div>
+            <dt>限定老荷兰</dt>
+            <dd><output id="pre-conversion-limited-paint">0</output></dd>
+          </div>
+          <div>
+            <dt>人民币总金额</dt>
+            <dd><output id="pre-conversion-rmb-total">¥0</output></dd>
+          </div>
+          <div>
+            <dt>计入限时累充金额</dt>
+            <dd><output id="pre-conversion-limited-recharge-rmb">¥0</output></dd>
+          </div>
+        </dl>
+        <p id="pre-conversion-error" class="date-error" aria-live="polite"></p>
+      </section>
     </main>
 
     <script defer src="js/calculator.js"></script>

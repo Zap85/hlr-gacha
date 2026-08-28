@@ -10,6 +10,7 @@ const dateSelectionState = {
   currentDate: "",
   targetDate: "",
   targetMode: "banner",
+  targetBanner: null,
 };
 const incomeCardSelections = {
   monthlyCardSelected: false,
@@ -20,6 +21,11 @@ const incomeCardSelections = {
 };
 const dailyIncomeSettings = {
   todayIncomeClaimed: true,
+};
+const dailyIncomeState = {
+  resources: {},
+  rmbTotal: 0,
+  limitedRechargeRmb: 0,
 };
 let freeDailyAccumulationRules = null;
 let freeDailyAccumulationView = null;
@@ -56,6 +62,17 @@ let eventPacks = [];
 let eventPackResourceNames = new Map();
 let eventPacksLoading = true;
 let eventPacksLoadError = "";
+const otherState = {
+  resources: {
+    diamond: 0,
+    red_diamond: 0,
+    common_paint: 0,
+    timed_paint: 0,
+    limited_paint: 0,
+  },
+};
+let preConversionSummaryView = null;
+let summaryResourceInstances = [];
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -145,10 +162,74 @@ function removeLimitedInventoryResource(resourceId) {
   return delete inventoryState.limitedPaintResources[resourceId];
 }
 
+function getInventoryResourceSources() {
+  return [
+    inventoryState.fixedResources,
+    inventoryState.timedPaintTotals,
+    inventoryState.limitedPaintResources,
+  ];
+}
+
+function updatePreConversionSummaryResult() {
+  if (!preConversionSummaryView) {
+    return;
+  }
+
+  const result = calculatePreConversionSummary({
+    resourceSources: [
+      ...getInventoryResourceSources(),
+      dailyIncomeState.resources,
+      eventIncomeState.resources,
+      permanentPackState.resources,
+      eventPackPurchaseState.resources,
+    ],
+    resourceAdjustments: otherState.resources,
+    paymentSources: [
+      {
+        amount: dailyIncomeState.rmbTotal,
+        limitedRechargeAmount: dailyIncomeState.limitedRechargeRmb,
+      },
+      ...permanentPackState.purchases.map((purchase) => ({
+        amount: purchase.price,
+        countsTowardLimitedRecharge:
+          purchase.countsTowardLimitedRecharge,
+      })),
+      {
+        amount: eventPackPurchaseState.totalPrice,
+        limitedRechargeAmount:
+          eventPackPurchaseState.limitedRechargePrice,
+      },
+    ],
+    resourceInstances: summaryResourceInstances,
+    targetDate: dateSelectionState.targetDate,
+    targetBanner: dateSelectionState.targetBanner,
+  });
+
+  if (!result.valid) {
+    preConversionSummaryView.error.textContent = result.error;
+    return;
+  }
+
+  Object.entries(preConversionSummaryView.resources).forEach(
+    ([resourceId, output]) => {
+      output.textContent = String(result.resources[resourceId]);
+    },
+  );
+  preConversionSummaryView.rmbTotal.textContent = `¥${result.rmbTotal}`;
+  preConversionSummaryView.limitedRechargeRmb.textContent =
+    `¥${result.limitedRechargeRmb}`;
+  preConversionSummaryView.error.textContent = "";
+}
+
 function updateFreeDailyAccumulationResult() {
   if (!freeDailyAccumulationView) {
     return;
   }
+
+  dailyIncomeState.resources = {};
+  dailyIncomeState.rmbTotal = 0;
+  dailyIncomeState.limitedRechargeRmb = 0;
+  updatePreConversionSummaryResult();
 
   const outputs = [
     freeDailyAccumulationView.dailyTasks,
@@ -244,8 +325,27 @@ function updateFreeDailyAccumulationResult() {
     `${cardResult.catTreat.rewardCount} 个`;
   incomeCardView.catTreatPaint.textContent =
     `${cardResult.catTreat.commonPaint} 个老荷兰颜料`;
+  dailyIncomeState.resources = {
+    diamond:
+      result.dailyTasks.diamonds +
+      result.weeklyShares.diamonds +
+      cardResult.monthlySignInDiamonds +
+      cardResult.monthlyCard.totalDiamonds +
+      cardResult.seasonalCard.totalDiamonds,
+    common_paint:
+      result.monthEndRewards.commonPaint +
+      cardResult.annualCard.commonPaint +
+      cardResult.catTreat.commonPaint,
+  };
+  dailyIncomeState.rmbTotal =
+    cardResult.monthlyCard.purchaseAmountRmb;
+  dailyIncomeState.limitedRechargeRmb =
+    cardResult.monthlyCard.countsTowardLimitedRecharge
+      ? cardResult.monthlyCard.purchaseAmountRmb
+      : 0;
   freeDailyAccumulationView.error.textContent = "";
   incomeCardView.error.textContent = "";
+  updatePreConversionSummaryResult();
 }
 
 function updateIncomeCardAppearance(card, selected) {
@@ -357,6 +457,7 @@ function updateEventIncomeResult() {
   eventIncomeView.groups.hidden = true;
   eventIncomeState.resources = {};
   eventIncomeView.error.textContent = "";
+  updatePreConversionSummaryResult();
 
   if (dateSelectionState.targetMode !== "banner") {
     const disabledResult = calculateSelectedEventIncome(
@@ -404,6 +505,7 @@ function updateEventIncomeResult() {
   }
 
   eventIncomeState.resources = result.selectedResources;
+  updatePreConversionSummaryResult();
   const eligibleEvents = result.events.filter((event) => event.eligible);
 
   if (eligibleEvents.length === 0) {
@@ -484,6 +586,7 @@ function renderPermanentPacks() {
   permanentPackState.totalPrice = purchaseResult.totalPrice;
   permanentPackState.purchases = purchaseResult.purchases;
   permanentPackView.error.textContent = "";
+  updatePreConversionSummaryResult();
 
   displayResult.packs.forEach((result) => {
     const { pack } = result;
@@ -780,6 +883,10 @@ function updateEventPacksResult() {
   eventPackView.groups.replaceChildren();
   eventPackView.summary.hidden = true;
   eventPackView.error.textContent = "";
+  eventPackPurchaseState.resources = {};
+  eventPackPurchaseState.totalPrice = 0;
+  eventPackPurchaseState.limitedRechargePrice = 0;
+  updatePreConversionSummaryResult();
 
   if (eventPacksLoading) {
     eventPackView.message.textContent = "正在加载活动礼包数据。";
@@ -808,6 +915,7 @@ function updateEventPacksResult() {
   eventPackPurchaseState.totalPrice = summary.totalPrice;
   eventPackPurchaseState.limitedRechargePrice =
     summary.limitedRechargePrice;
+  updatePreConversionSummaryResult();
   const displayableEventPacks = getDisplayableEventPacks(
     eventPacks,
     dateSelectionState.targetDate,
@@ -888,9 +996,11 @@ function initializeDateModule() {
     dateSelectionState.currentDate = currentDateInput.value;
     dateSelectionState.targetDate = targetDate;
     dateSelectionState.targetMode = mode;
+    dateSelectionState.targetBanner = mode === "banner" ? banner : null;
     updateFreeDailyAccumulationResult();
     updateEventIncomeResult();
     updateEventPacksResult();
+    updatePreConversionSummaryResult();
 
     actualTargetDate.textContent = targetDate || "—";
     calculatedDays.textContent = "—";
@@ -1057,6 +1167,10 @@ function initializeInventoryModule() {
 
         error.textContent = result.error ?? "";
         input.setAttribute("aria-invalid", String(!result.valid));
+
+        if (result.valid) {
+          updatePreConversionSummaryResult();
+        }
       });
 
       label.append(labelText);
@@ -1184,11 +1298,16 @@ function initializeInventoryModule() {
 
           error.textContent = result.error ?? "";
           input.setAttribute("aria-invalid", String(!result.valid));
+
+          if (result.valid) {
+            updatePreConversionSummaryResult();
+          }
         });
         removeButton.addEventListener("click", () => {
           removeLimitedInventoryResource(resourceId);
           renderLimitedInventoryList();
           renderLimitedResourceOptions();
+          updatePreConversionSummaryResult();
         });
 
         label.append(labelText, description, input, error);
@@ -1223,6 +1342,7 @@ function initializeInventoryModule() {
     limitedResourceAmount.value = "0";
     renderLimitedInventoryList();
     renderLimitedResourceOptions();
+    updatePreConversionSummaryResult();
   });
 
   loadResourceTypes()
@@ -1240,8 +1360,10 @@ function initializeInventoryModule() {
 
   loadResourceInstances()
     .then((resources) => {
+      summaryResourceInstances = resources;
       initializeLimitedInventory(resources);
       dynamicInventoryError.textContent = "";
+      updatePreConversionSummaryResult();
     })
     .catch(() => {
       limitedResourceSelect.replaceChildren();
@@ -1439,6 +1561,7 @@ function initializeEventPacksModule() {
   ])
     .then(([loadedEventPacks, resourceTypes, resourceInstances]) => {
       eventPacks = loadedEventPacks;
+      summaryResourceInstances = resourceInstances;
       eventPackResourceNames = new Map([
         ...resourceTypes.map((resourceType) => [
           resourceType.id,
@@ -1462,7 +1585,58 @@ function initializeEventPacksModule() {
     .finally(() => {
       eventPacksLoading = false;
       updateEventPacksResult();
+      updatePreConversionSummaryResult();
     });
+}
+
+function initializeOtherModule() {
+  const resourceInputs = document.querySelectorAll(
+    "[data-other-resource-id]",
+  );
+  const error = document.querySelector("#other-error");
+
+  resourceInputs.forEach((input) => {
+    input.addEventListener("input", () => {
+      const result = parseResourceAdjustment(input.value);
+
+      input.setAttribute("aria-invalid", String(!result.valid));
+      error.textContent = result.error ?? "";
+
+      if (!result.valid) {
+        return;
+      }
+
+      otherState.resources[input.dataset.otherResourceId] = result.amount;
+      updatePreConversionSummaryResult();
+    });
+  });
+}
+
+function initializePreConversionSummaryModule() {
+  preConversionSummaryView = {
+    resources: {
+      diamond: document.querySelector("#pre-conversion-diamond"),
+      red_diamond: document.querySelector(
+        "#pre-conversion-red-diamond",
+      ),
+      common_paint: document.querySelector(
+        "#pre-conversion-common-paint",
+      ),
+      timed_paint: document.querySelector(
+        "#pre-conversion-timed-paint",
+      ),
+      limited_paint: document.querySelector(
+        "#pre-conversion-limited-paint",
+      ),
+    },
+    rmbTotal: document.querySelector("#pre-conversion-rmb-total"),
+    limitedRechargeRmb: document.querySelector(
+      "#pre-conversion-limited-recharge-rmb",
+    ),
+    error: document.querySelector("#pre-conversion-error"),
+  };
+
+  updatePreConversionSummaryResult();
 }
 
 if (typeof document !== "undefined") {
@@ -1472,4 +1646,6 @@ if (typeof document !== "undefined") {
   initializeEventIncomeModule();
   initializePermanentPacksModule();
   initializeEventPacksModule();
+  initializeOtherModule();
+  initializePreConversionSummaryModule();
 }
