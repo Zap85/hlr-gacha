@@ -51,7 +51,7 @@ assert.equal(
   ),
   true,
 );
-assert.match(indexHtml, /<summary[^>]*>新人和等级礼包<\/summary>/);
+assert.match(indexHtml, /<summary[^>]*>常驻礼包<\/summary>/);
 assert.match(indexHtml, /<details class="pack-disclosure">/);
 assert.doesNotMatch(indexHtml, /<details class="pack-disclosure" open>/);
 

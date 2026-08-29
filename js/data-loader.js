@@ -211,6 +211,33 @@ function isValidFreeDailyAccumulationRules(rules) {
   );
 }
 
+function isValidMonthlyCardWeeklyDiscountPack(config) {
+  const pack = config?.pack;
+
+  return (
+    typeof config?.id === "string" &&
+    config.id.trim() !== "" &&
+    typeof config.name === "string" &&
+    config.name.trim() !== "" &&
+    typeof pack?.id === "string" &&
+    pack.id.trim() !== "" &&
+    typeof pack.name === "string" &&
+    pack.name.trim() !== "" &&
+    pack.cost?.resourceId === "diamond" &&
+    pack.cost.amount === 1200 &&
+    pack.purchaseRule?.type === "weekly" &&
+    pack.purchaseRule.limit === 1 &&
+    Array.isArray(pack.contents) &&
+    pack.contents.length === 1 &&
+    pack.contents[0]?.resourceId === "common_paint" &&
+    pack.contents[0].amount === 10 &&
+    Array.isArray(pack.otherContents) &&
+    Array.isArray(pack.prerequisites) &&
+    pack.trigger === null &&
+    Array.isArray(pack.deferredRewards)
+  );
+}
+
 function isValidIncomeCardRules(rules) {
   return (
     rules !== null &&
@@ -224,6 +251,9 @@ function isValidIncomeCardRules(rules) {
     Number.isSafeInteger(rules.monthlyCard.priceRmb) &&
     rules.monthlyCard.priceRmb >= 0 &&
     rules.monthlyCard.countsTowardLimitedRecharge === true &&
+    isValidMonthlyCardWeeklyDiscountPack(
+      rules.monthlyCard.weeklyDiscountCurrencyPack,
+    ) &&
     Number.isSafeInteger(rules.seasonalCard?.dailyDiamonds) &&
     rules.seasonalCard.dailyDiamonds >= 0 &&
     Number.isInteger(rules.annualCard?.rewardDay) &&

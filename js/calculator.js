@@ -178,30 +178,57 @@ function calculateIncomeCards(
     return { valid: false, error: dateRange.error };
   }
 
-  if (!Number.isInteger(selections.monthlyCardAdjustment)) {
-    return { valid: false, error: "月卡调整值必须是整数。" };
+  if (
+    !Number.isSafeInteger(selections.monthlyCardRemainingDays) ||
+    selections.monthlyCardRemainingDays < 0
+  ) {
+    return { valid: false, error: "当前月卡剩余天数必须是非负整数。" };
+  }
+
+  if (
+    !Number.isSafeInteger(selections.monthlyCardExtraPurchases) ||
+    selections.monthlyCardExtraPurchases < 0
+  ) {
+    return { valid: false, error: "额外购买月卡数量必须是非负整数。" };
   }
 
   const incomeDays = Math.max(
     0,
     dateRange.days - (todayIncomeClaimed ? 1 : 0),
   );
-  const monthlyCardBasePurchases = Math.ceil(
-    incomeDays / rules.monthlyCard.durationDays,
-  );
-  const monthlyCardActualPurchases = Math.max(
+  const monthlyCardExistingCoveredDays =
+    selections.monthlyCardRemainingDays === 0
+      ? 0
+      : selections.monthlyCardRemainingDays +
+        (todayIncomeClaimed ? 0 : 1);
+  const monthlyCardUncoveredDays = Math.max(
     0,
-    monthlyCardBasePurchases + selections.monthlyCardAdjustment,
+    incomeDays - monthlyCardExistingCoveredDays,
   );
+  const monthlyCardRequiredPurchases = selections.monthlyCardSelected
+    ? Math.ceil(
+        monthlyCardUncoveredDays / rules.monthlyCard.durationDays,
+      )
+    : 0;
+  const monthlyCardExtraPurchases = selections.monthlyCardSelected
+    ? selections.monthlyCardExtraPurchases
+    : 0;
+  const monthlyCardPurchaseCount =
+    monthlyCardRequiredPurchases + monthlyCardExtraPurchases;
   const monthlyCardDailyDiamonds = selections.monthlyCardSelected
     ? incomeDays * rules.monthlyCard.dailyDiamonds
     : 0;
   const monthlyCardPurchaseDiamonds = selections.monthlyCardSelected
-    ? monthlyCardActualPurchases * rules.monthlyCard.purchaseDiamonds
+    ? monthlyCardPurchaseCount * rules.monthlyCard.purchaseDiamonds
     : 0;
   const monthlyCardPurchaseAmountRmb = selections.monthlyCardSelected
-    ? monthlyCardActualPurchases * rules.monthlyCard.priceRmb
+    ? monthlyCardPurchaseCount * rules.monthlyCard.priceRmb
     : 0;
+  const monthlyCardLimitedRechargeRmb =
+    selections.monthlyCardSelected &&
+    rules.monthlyCard.countsTowardLimitedRecharge
+      ? monthlyCardPurchaseAmountRmb
+      : 0;
   const seasonalCardDailyDiamonds = selections.seasonalCardSelected
     ? incomeDays * rules.seasonalCard.dailyDiamonds
     : 0;
@@ -235,12 +262,16 @@ function calculateIncomeCards(
       : monthlySignInDiamonds,
     monthlyCard: {
       selected: selections.monthlyCardSelected,
-      basePurchases: monthlyCardBasePurchases,
-      adjustment: selections.monthlyCardAdjustment,
-      actualPurchases: monthlyCardActualPurchases,
+      monthlyIncomeDays: incomeDays,
+      remainingDays: selections.monthlyCardRemainingDays,
+      existingCoveredDays: monthlyCardExistingCoveredDays,
+      requiredPurchases: monthlyCardRequiredPurchases,
+      extraPurchases: monthlyCardExtraPurchases,
+      purchaseCount: monthlyCardPurchaseCount,
       dailyDiamonds: monthlyCardDailyDiamonds,
       purchaseDiamonds: monthlyCardPurchaseDiamonds,
       purchaseAmountRmb: monthlyCardPurchaseAmountRmb,
+      limitedRechargeRmb: monthlyCardLimitedRechargeRmb,
       countsTowardLimitedRecharge:
         rules.monthlyCard.countsTowardLimitedRecharge,
       totalDiamonds:
@@ -390,7 +421,16 @@ function calculateSelectedEventIncome(
   };
 }
 
-function calculatePermanentPackValue(pack, redDiamondPerPull, rules) {
+function calculatePackValue(
+  pack,
+  redDiamondPerPull,
+  rules,
+  {
+    targetDate = "",
+    targetBanner = null,
+    resourceInstances = [],
+  } = {},
+) {
   if (
     typeof redDiamondPerPull !== "number" ||
     !Number.isFinite(redDiamondPerPull) ||
@@ -399,22 +439,89 @@ function calculatePermanentPackValue(pack, redDiamondPerPull, rules) {
     return { valid: false, error: "红钻理论折算率必须大于 0。" };
   }
 
-  const theoreticalPulls =
-    (pack.contents.diamond ?? 0) / rules.diamondPerPull +
-    (pack.contents.common_paint ?? 0) / rules.commonPaintPerPull +
-    (pack.contents.red_diamond ?? 0) / redDiamondPerPull;
+  const contents = Array.isArray(pack.contents)
+    ? pack.contents
+    : Object.entries(pack.contents).map(([resourceId, amount]) => ({
+        resourceId,
+        amount,
+      }));
+  const resourceInstancesById = new Map(
+    resourceInstances.map((resource) => [resource.id, resource]),
+  );
+  let theoreticalPulls = 0;
 
-  if (theoreticalPulls <= 0) {
-    return { valid: false, error: `礼包“${pack.name}”没有抽卡资源。` };
-  }
+  contents.forEach(({ resourceId, amount }) => {
+    if (resourceId === "diamond") {
+      theoreticalPulls += amount / rules.diamondPerPull;
+      return;
+    }
+
+    if (resourceId === "red_diamond") {
+      theoreticalPulls += amount / redDiamondPerPull;
+      return;
+    }
+
+    if (resourceId === "common_paint") {
+      theoreticalPulls += amount / rules.commonPaintPerPull;
+      return;
+    }
+
+    const resource = resourceInstancesById.get(resourceId);
+
+    if (
+      ["timed_paint", "limited_paint"].includes(resource?.category) &&
+      isResourceInstanceAvailable(resource, targetDate, targetBanner)
+    ) {
+      theoreticalPulls += amount;
+    }
+  });
 
   return {
     valid: true,
     error: null,
     pack,
     theoreticalPulls,
-    pricePerPull: pack.price / theoreticalPulls,
+    pricePerPull:
+      theoreticalPulls > 0 ? pack.price / theoreticalPulls : null,
   };
+}
+
+function calculatePermanentPackValue(pack, redDiamondPerPull, rules) {
+  const result = calculatePackValue(pack, redDiamondPerPull, rules);
+
+  if (!result.valid) {
+    return result;
+  }
+
+  if (result.theoreticalPulls <= 0) {
+    return { valid: false, error: `礼包“${pack.name}”没有抽卡资源。` };
+  }
+
+  return result;
+}
+
+function sortPackValuesByPricePerPull(packValues) {
+  return packValues
+    .map((value, originalIndex) => ({ value, originalIndex }))
+    .sort((left, right) => {
+      const leftPrice = left.value.pricePerPull;
+      const rightPrice = right.value.pricePerPull;
+      const leftHasPrice =
+        typeof leftPrice === "number" && Number.isFinite(leftPrice);
+      const rightHasPrice =
+        typeof rightPrice === "number" && Number.isFinite(rightPrice);
+
+      if (leftHasPrice && rightHasPrice && leftPrice !== rightPrice) {
+        return leftPrice - rightPrice;
+      }
+
+      if (leftHasPrice !== rightHasPrice) {
+        return leftHasPrice ? -1 : 1;
+      }
+
+      return left.originalIndex - right.originalIndex;
+    })
+    .map(({ value }) => value);
 }
 
 function getPermanentPackPurchaseLimit(pack) {
@@ -565,6 +672,71 @@ function calculateEventPackDailyAvailability(
     valid: true,
     days,
     maximumQuantity: days * dailyLimit,
+    error: null,
+  };
+}
+
+function calculateCurrencyPackWeeklyAvailability(
+  currentDate,
+  targetDate,
+  currencyPack,
+  weeklyLimit,
+) {
+  const currentTimestamp = parseCalendarDate(currentDate);
+  const targetTimestamp = parseCalendarDate(targetDate);
+  const startTimestamp = parseCalendarDate(currencyPack.startDate);
+  const endTimestamp = parseCalendarDate(currencyPack.endDate);
+
+  if (
+    currentTimestamp === null ||
+    targetTimestamp === null ||
+    startTimestamp === null ||
+    endTimestamp === null ||
+    targetTimestamp < currentTimestamp ||
+    endTimestamp < startTimestamp ||
+    !Number.isSafeInteger(weeklyLimit) ||
+    weeklyLimit <= 0
+  ) {
+    return {
+      valid: false,
+      weeks: 0,
+      maximumQuantity: 0,
+      error: "钻石 / 红钻礼包日期或每周限购规则无效。",
+    };
+  }
+
+  const firstAvailableTimestamp = Math.max(
+    currentTimestamp,
+    startTimestamp,
+  );
+  const lastAvailableTimestamp = Math.min(targetTimestamp, endTimestamp);
+
+  if (firstAvailableTimestamp > lastAvailableTimestamp) {
+    return {
+      valid: true,
+      weeks: 0,
+      maximumQuantity: 0,
+      error: null,
+    };
+  }
+
+  const firstDate = new Date(firstAvailableTimestamp);
+  const lastDate = new Date(lastAvailableTimestamp);
+  const firstMondayTimestamp =
+    firstAvailableTimestamp -
+    ((firstDate.getUTCDay() + 6) % 7) * MILLISECONDS_PER_DAY;
+  const lastMondayTimestamp =
+    lastAvailableTimestamp -
+    ((lastDate.getUTCDay() + 6) % 7) * MILLISECONDS_PER_DAY;
+  const weeks =
+    (lastMondayTimestamp - firstMondayTimestamp) /
+      (7 * MILLISECONDS_PER_DAY) +
+    1;
+
+  return {
+    valid: true,
+    weeks,
+    maximumQuantity: weeks * weeklyLimit,
     error: null,
   };
 }
@@ -853,7 +1025,6 @@ function getApplicableLimitedPaintResources(
 
 function calculatePreConversionSummary({
   resourceSources = [],
-  resourceAdjustments = {},
   paymentSources = [],
   resourceInstances = [],
   targetDate = "",
@@ -891,18 +1062,6 @@ function calculatePreConversionSummary({
       ) {
         resources[resource.category] += amount;
       }
-    }
-  }
-
-  for (const [resourceId, amount] of Object.entries(resourceAdjustments)) {
-    if (!Number.isSafeInteger(amount)) {
-      return { valid: false, error: "资源调整量无效。" };
-    }
-
-    if (
-      Object.prototype.hasOwnProperty.call(resources, resourceId)
-    ) {
-      resources[resourceId] += amount;
     }
   }
 
@@ -949,6 +1108,31 @@ function calculatePreConversionSummary({
   };
 }
 
+function calculateFinalResourceTotals(
+  resources,
+  resourceAdjustments = {},
+) {
+  const finalResources = { ...resources };
+
+  for (const [resourceId, amount] of Object.entries(resourceAdjustments)) {
+    if (!Number.isSafeInteger(amount)) {
+      return { valid: false, error: "资源调整量无效。" };
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(finalResources, resourceId)
+    ) {
+      finalResources[resourceId] += amount;
+    }
+  }
+
+  return {
+    valid: true,
+    error: null,
+    resources: finalResources,
+  };
+}
+
 function isCurrencyPackVisible(currentDate, targetDate, currencyPack) {
   const currentTimestamp = parseCalendarDate(currentDate);
   const targetTimestamp = parseCalendarDate(targetDate);
@@ -965,6 +1149,42 @@ function isCurrencyPackVisible(currentDate, targetDate, currencyPack) {
     Math.max(currentTimestamp, startTimestamp) <=
       Math.min(targetTimestamp, endTimestamp)
   );
+}
+
+function createMonthlyCardCurrencyPack(
+  config,
+  currentDate,
+  targetDate,
+) {
+  return {
+    id: config.id,
+    name: config.name,
+    source: "monthly_card",
+    startDate: currentDate,
+    endDate: targetDate,
+    packs: [config.pack],
+  };
+}
+
+function getCurrencyPacksForMonthlyCard(
+  eventCurrencyPacks,
+  monthlyCardConfig,
+  monthlyCardSelected,
+  currentDate,
+  targetDate,
+) {
+  if (!monthlyCardSelected || !monthlyCardConfig) {
+    return [...eventCurrencyPacks];
+  }
+
+  return [
+    createMonthlyCardCurrencyPack(
+      monthlyCardConfig,
+      currentDate,
+      targetDate,
+    ),
+    ...eventCurrencyPacks,
+  ];
 }
 
 function getDisplayableCurrencyPacks(
@@ -1077,6 +1297,15 @@ function getCurrencyPackMaximumQuantity(
     ).maximumQuantity;
   }
 
+  if (pack.purchaseRule.type === "weekly") {
+    return calculateCurrencyPackWeeklyAvailability(
+      currentDate,
+      targetDate,
+      currencyPack,
+      pack.purchaseRule.limit,
+    ).maximumQuantity;
+  }
+
   return pack.purchaseRule.limit;
 }
 
@@ -1092,6 +1321,44 @@ function createCurrencyPackPurchaseState(currencyPacks) {
       ),
     ]),
   );
+}
+
+function synchronizeCurrencyPackPurchaseState(
+  currencyPacks,
+  purchaseState,
+  currentDate,
+  targetDate,
+) {
+  const nextState = createCurrencyPackPurchaseState(currencyPacks);
+
+  currencyPacks.forEach((currencyPack) => {
+    currencyPack.packs.forEach((pack) => {
+      const existingPurchase =
+        purchaseState?.[currencyPack.id]?.[pack.id];
+
+      if (existingPurchase) {
+        nextState[currencyPack.id][pack.id] = {
+          ...existingPurchase,
+        };
+        return;
+      }
+
+      if (currencyPack.source === "monthly_card") {
+        const maximumQuantity = getCurrencyPackMaximumQuantity(
+          pack,
+          currencyPack,
+          currentDate,
+          targetDate,
+        );
+        nextState[currencyPack.id][pack.id] = {
+          selected: maximumQuantity > 0,
+          quantity: maximumQuantity,
+        };
+      }
+    });
+  });
+
+  return nextState;
 }
 
 function normalizeCurrencyPackPurchases(

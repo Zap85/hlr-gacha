@@ -24,7 +24,33 @@
         "dailyDiamonds": 50,
         "purchaseDiamonds": 300,
         "priceRmb": 30,
-        "countsTowardLimitedRecharge": true
+        "countsTowardLimitedRecharge": true,
+        "weeklyDiscountCurrencyPack": {
+          "id": "月卡优惠兑换",
+          "name": "月卡",
+          "pack": {
+            "id": "每周优惠十连",
+            "name": "每周优惠十连",
+            "cost": {
+              "resourceId": "diamond",
+              "amount": 1200
+            },
+            "purchaseRule": {
+              "type": "weekly",
+              "limit": 1
+            },
+            "contents": [
+              {
+                "resourceId": "common_paint",
+                "amount": 10
+              }
+            ],
+            "otherContents": [],
+            "prerequisites": [],
+            "trigger": null,
+            "deferredRewards": []
+          }
+        }
       },
       "seasonalCard": {
         "dailyDiamonds": 50

@@ -23,6 +23,9 @@ const resourceInstanceData = JSON.parse(
 const eventData = JSON.parse(
   readProjectFile(path.join("data", "events", "test-event.json")),
 );
+const constantsData = JSON.parse(
+  readProjectFile(path.join("data", "constants.json")),
+);
 const indexHtml = readProjectFile("index.html");
 const calculatorContext = vm.createContext({});
 
@@ -55,10 +58,176 @@ const calculateCurrencyPackPurchaseSummary = vm.runInContext(
   "calculateCurrencyPackPurchaseSummary",
   calculatorContext,
 );
+const calculateFinalResourceTotals = vm.runInContext(
+  "calculateFinalResourceTotals",
+  calculatorContext,
+);
+const calculateCurrencyPackWeeklyAvailability = vm.runInContext(
+  "calculateCurrencyPackWeeklyAvailability",
+  calculatorContext,
+);
+const getCurrencyPacksForMonthlyCard = vm.runInContext(
+  "getCurrencyPacksForMonthlyCard",
+  calculatorContext,
+);
+const getCurrencyPackMaximumQuantity = vm.runInContext(
+  "getCurrencyPackMaximumQuantity",
+  calculatorContext,
+);
+const synchronizeCurrencyPackPurchaseState = vm.runInContext(
+  "synchronizeCurrencyPackPurchaseState",
+  calculatorContext,
+);
 const packs = currencyPackData.packs;
 const resourceInstances = resourceInstanceData.resources;
+const monthlyCardConfig =
+  constantsData.constants.incomeCards.monthlyCard.weeklyDiscountCurrencyPack;
 const manorBanner = { id: "庄园诡戏", tags: [] };
 const otherBanner = { id: "六周年庆典", tags: [] };
+
+assert.equal(monthlyCardConfig.name, "月卡");
+assert.equal(monthlyCardConfig.pack.name, "每周优惠十连");
+assert.deepEqual(monthlyCardConfig.pack.cost, {
+  resourceId: "diamond",
+  amount: 1200,
+});
+assert.deepEqual(monthlyCardConfig.pack.contents, [
+  { resourceId: "common_paint", amount: 10 },
+]);
+assert.deepEqual(monthlyCardConfig.pack.purchaseRule, {
+  type: "weekly",
+  limit: 1,
+});
+
+const monthlyCardCurrencyPacks = getCurrencyPacksForMonthlyCard(
+  [currencyPackData],
+  monthlyCardConfig,
+  true,
+  "2026-08-30",
+  "2026-09-02",
+);
+assert.equal(monthlyCardCurrencyPacks[0].name, "月卡");
+assert.equal(monthlyCardCurrencyPacks[1].id, currencyPackData.id);
+assert.equal(
+  getCurrencyPacksForMonthlyCard(
+    [currencyPackData],
+    monthlyCardConfig,
+    false,
+    "2026-08-30",
+    "2026-09-02",
+  ).some((currencyPack) => currencyPack.source === "monthly_card"),
+  false,
+);
+assert.equal(
+  calculateCurrencyPackWeeklyAvailability(
+    "2026-08-24",
+    "2026-08-30",
+    {
+      startDate: "2026-08-24",
+      endDate: "2026-08-30",
+    },
+    1,
+  ).maximumQuantity,
+  1,
+);
+assert.equal(
+  calculateCurrencyPackWeeklyAvailability(
+    "2026-08-30",
+    "2026-08-31",
+    {
+      startDate: "2026-08-30",
+      endDate: "2026-08-31",
+    },
+    1,
+  ).maximumQuantity,
+  2,
+);
+assert.equal(
+  getCurrencyPackMaximumQuantity(
+    monthlyCardConfig.pack,
+    monthlyCardCurrencyPacks[0],
+    "2026-08-30",
+    "2026-09-02",
+  ),
+  2,
+);
+
+const defaultMonthlyPurchaseState = synchronizeCurrencyPackPurchaseState(
+  monthlyCardCurrencyPacks,
+  createCurrencyPackPurchaseState([currencyPackData]),
+  "2026-08-30",
+  "2026-09-02",
+);
+assert.deepEqual(
+  {
+    ...defaultMonthlyPurchaseState[monthlyCardCurrencyPacks[0].id][
+      monthlyCardConfig.pack.id
+    ],
+  },
+  { selected: true, quantity: 2 },
+);
+
+defaultMonthlyPurchaseState[monthlyCardCurrencyPacks[0].id][
+  monthlyCardConfig.pack.id
+] = { selected: true, quantity: 1 };
+const preservedMonthlyQuantity = synchronizeCurrencyPackPurchaseState(
+  monthlyCardCurrencyPacks,
+  defaultMonthlyPurchaseState,
+  "2026-08-30",
+  "2026-09-02",
+);
+assert.deepEqual(
+  {
+    ...preservedMonthlyQuantity[monthlyCardCurrencyPacks[0].id][
+      monthlyCardConfig.pack.id
+    ],
+  },
+  { selected: true, quantity: 1 },
+);
+
+preservedMonthlyQuantity[monthlyCardCurrencyPacks[0].id][
+  monthlyCardConfig.pack.id
+] = { selected: false, quantity: 0 };
+const preservedMonthlyCancellation = synchronizeCurrencyPackPurchaseState(
+  monthlyCardCurrencyPacks,
+  preservedMonthlyQuantity,
+  "2026-08-30",
+  "2026-09-02",
+);
+assert.deepEqual(
+  {
+    ...preservedMonthlyCancellation[monthlyCardCurrencyPacks[0].id][
+      monthlyCardConfig.pack.id
+    ],
+  },
+  { selected: false, quantity: 0 },
+);
+
+const stateAfterMonthlyCardDisabled =
+  synchronizeCurrencyPackPurchaseState(
+    [currencyPackData],
+    preservedMonthlyCancellation,
+    "2026-08-30",
+    "2026-09-02",
+  );
+assert.equal(
+  monthlyCardCurrencyPacks[0].id in stateAfterMonthlyCardDisabled,
+  false,
+);
+const reenabledMonthlyPurchaseState = synchronizeCurrencyPackPurchaseState(
+  monthlyCardCurrencyPacks,
+  stateAfterMonthlyCardDisabled,
+  "2026-08-30",
+  "2026-09-02",
+);
+assert.deepEqual(
+  {
+    ...reenabledMonthlyPurchaseState[monthlyCardCurrencyPacks[0].id][
+      monthlyCardConfig.pack.id
+    ],
+  },
+  { selected: true, quantity: 2 },
+);
 
 assert.equal(currencyPackData.id, "庄园诡戏钻石红钻礼包");
 assert.equal(currencyPackData.eventId, "庄园诡戏");
@@ -104,6 +273,10 @@ assert.doesNotMatch(
 assert.doesNotMatch(
   indexHtml,
   /currency-pack-summary|currency-pack-diamond-cost|currency-pack-red-diamond-cost|after-currency-pack-/,
+);
+assert.ok(
+  indexHtml.indexOf('id="currency-packs-error"') <
+    indexHtml.indexOf('id="currency-pack-groups"'),
 );
 
 assert.equal(
@@ -220,6 +393,63 @@ const baseResources = {
   limited_paint: 3,
 };
 const unchangedBaseResources = { ...baseResources };
+
+let monthlyPurchaseState = createCurrencyPackPurchaseState(
+  monthlyCardCurrencyPacks,
+);
+let monthlyUpdate = updateCurrencyPackPurchase(
+  monthlyCardCurrencyPacks,
+  monthlyPurchaseState,
+  monthlyCardCurrencyPacks[0].id,
+  monthlyCardConfig.pack.id,
+  true,
+  2,
+  { ...baseResources, diamond: 5000 },
+  "2026-08-30",
+  "2026-09-02",
+  manorBanner,
+  resourceInstances,
+);
+assert.equal(monthlyUpdate.valid, true);
+assert.equal(monthlyUpdate.summary.costs.diamond, 2400);
+assert.equal(monthlyUpdate.summary.rewards.common_paint, 20);
+assert.equal(monthlyUpdate.summary.resources.diamond, 2600);
+assert.equal(monthlyUpdate.summary.resources.common_paint, 22);
+
+monthlyPurchaseState = monthlyUpdate.purchaseState;
+monthlyUpdate = updateCurrencyPackPurchase(
+  monthlyCardCurrencyPacks,
+  monthlyPurchaseState,
+  monthlyCardCurrencyPacks[0].id,
+  monthlyCardConfig.pack.id,
+  false,
+  0,
+  { ...baseResources, diamond: 5000 },
+  "2026-08-30",
+  "2026-09-02",
+  manorBanner,
+  resourceInstances,
+);
+assert.equal(monthlyUpdate.valid, true);
+assert.equal(monthlyUpdate.summary.costs.diamond, 0);
+assert.equal(monthlyUpdate.summary.rewards.common_paint ?? 0, 0);
+
+const rejectedMonthlyPurchase = updateCurrencyPackPurchase(
+  monthlyCardCurrencyPacks,
+  createCurrencyPackPurchaseState(monthlyCardCurrencyPacks),
+  monthlyCardCurrencyPacks[0].id,
+  monthlyCardConfig.pack.id,
+  true,
+  2,
+  { ...baseResources, diamond: 2000 },
+  "2026-08-30",
+  "2026-09-02",
+  manorBanner,
+  resourceInstances,
+);
+assert.equal(rejectedMonthlyPurchase.valid, false);
+assert.match(rejectedMonthlyPurchase.error, /钻石余额不足/);
+
 let purchaseState = createCurrencyPackPurchaseState([currencyPackData]);
 const noPurchaseSummary = calculateCurrencyPackPurchaseSummary(
   [currencyPackData],
@@ -270,6 +500,107 @@ assert.equal(summary.resources.red_diamond, 2020);
 assert.equal(summary.rewards.common_paint, 28);
 assert.equal(summary.resources.common_paint, 30);
 assert.deepEqual(baseResources, unchangedBaseResources);
+
+const sevenWeekCurrencyPacks = getCurrencyPacksForMonthlyCard(
+  [currencyPackData],
+  monthlyCardConfig,
+  true,
+  "2026-08-24",
+  "2026-10-11",
+);
+const sevenWeekPurchaseState = createCurrencyPackPurchaseState(
+  sevenWeekCurrencyPacks,
+);
+sevenWeekPurchaseState[monthlyCardConfig.id][monthlyCardConfig.pack.id] = {
+  selected: true,
+  quantity: 7,
+};
+sevenWeekPurchaseState[currencyPackData.id]["庄园特殊颜料盒I"] = {
+  selected: true,
+  quantity: 1,
+};
+const resourcesBeforeCurrencyPacks = {
+  diamond: 8410,
+  red_diamond: 1990,
+  common_paint: 0,
+  timed_paint: 0,
+  limited_paint: 0,
+};
+const successfulCurrencyPackSummary =
+  calculateCurrencyPackPurchaseSummary(
+    sevenWeekCurrencyPacks,
+    sevenWeekPurchaseState,
+    resourcesBeforeCurrencyPacks,
+    "2026-08-24",
+    "2026-10-11",
+    manorBanner,
+    resourceInstances,
+  );
+
+assert.equal(successfulCurrencyPackSummary.valid, true);
+assert.equal(successfulCurrencyPackSummary.costs.diamond, 8400);
+assert.equal(successfulCurrencyPackSummary.costs.red_diamond, 1980);
+assert.equal(successfulCurrencyPackSummary.rewards.common_paint, 98);
+assert.equal(successfulCurrencyPackSummary.resources.diamond, 10);
+assert.equal(successfulCurrencyPackSummary.resources.red_diamond, 10);
+
+const finalWithNegativeAdjustments = calculateFinalResourceTotals(
+  successfulCurrencyPackSummary.resources,
+  { diamond: -20, red_diamond: -20 },
+);
+assert.equal(finalWithNegativeAdjustments.valid, true);
+assert.equal(finalWithNegativeAdjustments.resources.diamond, -10);
+assert.equal(finalWithNegativeAdjustments.resources.red_diamond, -10);
+assert.equal(
+  successfulCurrencyPackSummary.purchaseState[monthlyCardConfig.id][
+    monthlyCardConfig.pack.id
+  ].quantity,
+  7,
+);
+assert.equal(
+  successfulCurrencyPackSummary.purchaseState[currencyPackData.id][
+    "庄园特殊颜料盒I"
+  ].selected,
+  true,
+);
+
+const insufficientCurrencyResources = {
+  ...resourcesBeforeCurrencyPacks,
+  diamond: 8390,
+};
+const insufficientCurrencySummary = calculateCurrencyPackPurchaseSummary(
+  sevenWeekCurrencyPacks,
+  sevenWeekPurchaseState,
+  insufficientCurrencyResources,
+  "2026-08-24",
+  "2026-10-11",
+  manorBanner,
+  resourceInstances,
+);
+assert.equal(insufficientCurrencySummary.valid, false);
+assert.match(insufficientCurrencySummary.error, /钻石余额不足/);
+assert.equal(insufficientCurrencySummary.resources.diamond, 8390);
+
+const insufficientFinalWithPositiveAdjustment =
+  calculateFinalResourceTotals(insufficientCurrencySummary.resources, {
+    diamond: 100,
+  });
+assert.equal(
+  insufficientFinalWithPositiveAdjustment.resources.diamond,
+  8490,
+);
+assert.equal(insufficientCurrencySummary.valid, false);
+
+const finalWithPositiveAdjustments = calculateFinalResourceTotals(
+  successfulCurrencyPackSummary.resources,
+  { diamond: 100, red_diamond: 50 },
+);
+assert.equal(finalWithPositiveAdjustments.resources.diamond, 110);
+assert.equal(finalWithPositiveAdjustments.resources.red_diamond, 60);
+assert.equal(successfulCurrencyPackSummary.resources.diamond, 10);
+assert.equal(successfulCurrencyPackSummary.resources.red_diamond, 10);
+assert.equal(successfulCurrencyPackSummary.costs.diamond, 8400);
+assert.equal(successfulCurrencyPackSummary.costs.red_diamond, 1980);
 
 let limitedPurchaseState = createCurrencyPackPurchaseState([
   currencyPackData,

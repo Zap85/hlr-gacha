@@ -24,10 +24,16 @@ const calculateIncomeCards = vm.runInContext(
   "calculateIncomeCards",
   calculatorContext,
 );
+const parseInventoryAmount = vm.runInContext(
+  "parseInventoryAmount",
+  calculatorContext,
+);
+const indexHtml = readProjectFile("index.html");
 
 const defaultSelections = {
   monthlyCardSelected: false,
-  monthlyCardAdjustment: 0,
+  monthlyCardRemainingDays: 0,
+  monthlyCardExtraPurchases: 0,
   seasonalCardSelected: false,
   annualCardSelected: false,
   catTreatSelected: false,
@@ -41,10 +47,14 @@ const defaults = calculateIncomeCards(
   defaultSelections,
 );
 assert.equal(defaults.valid, true);
-assert.equal(defaults.monthlyCard.basePurchases, 1);
-assert.equal(defaults.monthlyCard.actualPurchases, 1);
+assert.equal(defaults.monthlyCard.requiredPurchases, 0);
+assert.equal(defaults.monthlyCard.extraPurchases, 0);
+assert.equal(defaults.monthlyCard.purchaseCount, 0);
+assert.equal(defaults.monthlyCard.dailyDiamonds, 0);
+assert.equal(defaults.monthlyCard.purchaseDiamonds, 0);
 assert.equal(defaults.monthlyCard.totalDiamonds, 0);
 assert.equal(defaults.monthlyCard.purchaseAmountRmb, 0);
+assert.equal(defaults.monthlyCard.limitedRechargeRmb, 0);
 assert.equal(defaults.monthlyCard.countsTowardLimitedRecharge, true);
 assert.equal(defaults.seasonalCard.totalDiamonds, 0);
 assert.equal(defaults.annualCard.commonPaint, 0);
@@ -59,11 +69,13 @@ const selectedMonthlyCard = calculateIncomeCards(
   {
     ...defaultSelections,
     monthlyCardSelected: true,
-    monthlyCardAdjustment: -1,
+    monthlyCardRemainingDays: 1,
   },
 );
-assert.equal(selectedMonthlyCard.monthlyCard.basePurchases, 2);
-assert.equal(selectedMonthlyCard.monthlyCard.actualPurchases, 1);
+assert.equal(selectedMonthlyCard.monthlyCard.monthlyIncomeDays, 31);
+assert.equal(selectedMonthlyCard.monthlyCard.existingCoveredDays, 1);
+assert.equal(selectedMonthlyCard.monthlyCard.requiredPurchases, 1);
+assert.equal(selectedMonthlyCard.monthlyCard.purchaseCount, 1);
 assert.equal(selectedMonthlyCard.monthlyCard.dailyDiamonds, 1550);
 assert.equal(selectedMonthlyCard.monthlyCard.purchaseDiamonds, 300);
 assert.equal(selectedMonthlyCard.monthlyCard.purchaseAmountRmb, 30);
@@ -74,7 +86,55 @@ assert.equal(
 assert.equal(selectedMonthlyCard.monthlyCard.totalDiamonds, 1850);
 assert.equal(selectedMonthlyCard.monthlySignInDiamonds, 630);
 
-const clampedMonthlyCard = calculateIncomeCards(
+const zeroRemainingDoesNotCoverToday = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-01",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    monthlyCardRemainingDays: 0,
+  },
+  false,
+);
+assert.equal(zeroRemainingDoesNotCoverToday.monthlyCard.monthlyIncomeDays, 1);
+assert.equal(zeroRemainingDoesNotCoverToday.monthlyCard.existingCoveredDays, 0);
+assert.equal(zeroRemainingDoesNotCoverToday.monthlyCard.requiredPurchases, 1);
+
+const claimedPositiveRemaining = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-11",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    monthlyCardRemainingDays: 5,
+  },
+  true,
+);
+assert.equal(claimedPositiveRemaining.monthlyCard.monthlyIncomeDays, 10);
+assert.equal(claimedPositiveRemaining.monthlyCard.existingCoveredDays, 5);
+assert.equal(claimedPositiveRemaining.monthlyCard.requiredPurchases, 1);
+
+const unclaimedPositiveRemaining = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-11",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    monthlyCardRemainingDays: 10,
+  },
+  false,
+);
+assert.equal(unclaimedPositiveRemaining.monthlyCard.monthlyIncomeDays, 11);
+assert.equal(unclaimedPositiveRemaining.monthlyCard.existingCoveredDays, 11);
+assert.equal(unclaimedPositiveRemaining.monthlyCard.requiredPurchases, 0);
+
+const enoughRemainingDays = calculateIncomeCards(
   "2026-07-01",
   "2026-07-31",
   315,
@@ -82,12 +142,75 @@ const clampedMonthlyCard = calculateIncomeCards(
   {
     ...defaultSelections,
     monthlyCardSelected: true,
-    monthlyCardAdjustment: -10,
+    monthlyCardRemainingDays: 30,
   },
 );
-assert.equal(clampedMonthlyCard.monthlyCard.actualPurchases, 0);
-assert.equal(clampedMonthlyCard.monthlyCard.purchaseDiamonds, 0);
-assert.equal(clampedMonthlyCard.monthlyCard.purchaseAmountRmb, 0);
+assert.equal(enoughRemainingDays.monthlyCard.requiredPurchases, 0);
+assert.equal(enoughRemainingDays.monthlyCard.purchaseCount, 0);
+assert.equal(enoughRemainingDays.monthlyCard.purchaseDiamonds, 0);
+assert.equal(enoughRemainingDays.monthlyCard.purchaseAmountRmb, 0);
+
+const lessThanThirtyDaysUncovered = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-31",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    monthlyCardRemainingDays: 1,
+  },
+);
+assert.equal(lessThanThirtyDaysUncovered.monthlyCard.requiredPurchases, 1);
+
+const multipleRequiredPurchases = calculateIncomeCards(
+  "2026-07-01",
+  "2026-09-15",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    monthlyCardRemainingDays: 1,
+  },
+);
+assert.equal(multipleRequiredPurchases.monthlyCard.monthlyIncomeDays, 76);
+assert.equal(multipleRequiredPurchases.monthlyCard.requiredPurchases, 3);
+
+const extraPurchases = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-31",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardSelected: true,
+    monthlyCardRemainingDays: 30,
+    monthlyCardExtraPurchases: 2,
+  },
+);
+assert.equal(extraPurchases.monthlyCard.requiredPurchases, 0);
+assert.equal(extraPurchases.monthlyCard.extraPurchases, 2);
+assert.equal(extraPurchases.monthlyCard.purchaseCount, 2);
+assert.equal(extraPurchases.monthlyCard.purchaseDiamonds, 600);
+assert.equal(extraPurchases.monthlyCard.purchaseAmountRmb, 60);
+assert.equal(extraPurchases.monthlyCard.limitedRechargeRmb, 60);
+
+const unselectedExtraPurchases = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-31",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardExtraPurchases: 2,
+  },
+);
+assert.equal(unselectedExtraPurchases.monthlyCard.requiredPurchases, 0);
+assert.equal(unselectedExtraPurchases.monthlyCard.extraPurchases, 0);
+assert.equal(unselectedExtraPurchases.monthlyCard.purchaseCount, 0);
+assert.equal(unselectedExtraPurchases.monthlyCard.purchaseDiamonds, 0);
+assert.equal(unselectedExtraPurchases.monthlyCard.purchaseAmountRmb, 0);
 
 const seasonalHoldingOnly = calculateIncomeCards(
   "2026-07-01",
@@ -194,17 +317,58 @@ assert.equal(crossesTwoTwentyThirds.annualCard.rewardCount, 2);
 assert.equal(crossesTwoTwentyThirds.annualCard.commonPaint, 10);
 assert.equal(crossesTwoTwentyThirds.catTreat.commonPaint, 2);
 
-const invalidAdjustment = calculateIncomeCards(
+const invalidExtraPurchases = calculateIncomeCards(
   "2026-07-01",
   "2026-07-31",
   0,
   rules,
   {
     ...defaultSelections,
-    monthlyCardAdjustment: 0.5,
+    monthlyCardExtraPurchases: -1,
   },
 );
-assert.equal(invalidAdjustment.valid, false);
+assert.equal(invalidExtraPurchases.valid, false);
+
+const invalidRemainingDays = calculateIncomeCards(
+  "2026-07-01",
+  "2026-07-31",
+  0,
+  rules,
+  {
+    ...defaultSelections,
+    monthlyCardRemainingDays: -1,
+  },
+);
+assert.equal(invalidRemainingDays.valid, false);
+
+const appContext = vm.createContext({ parseInventoryAmount });
+vm.runInContext(readProjectFile(path.join("js", "app.js")), appContext);
+const updateMonthlyCardInputState = vm.runInContext(
+  "updateMonthlyCardInputState",
+  appContext,
+);
+const incomeCardSelections = vm.runInContext(
+  "incomeCardSelections",
+  appContext,
+);
+assert.equal(
+  updateMonthlyCardInputState("monthlyCardExtraPurchases", "2").valid,
+  true,
+);
+assert.equal(incomeCardSelections.monthlyCardExtraPurchases, 2);
+assert.equal(
+  updateMonthlyCardInputState("monthlyCardExtraPurchases", "-1").valid,
+  false,
+);
+assert.equal(incomeCardSelections.monthlyCardExtraPurchases, 2);
+
+assert.match(indexHtml, /id="monthly-card-remaining-days"[^>]*min="0"/);
+assert.match(indexHtml, /id="monthly-card-extra-purchases"[^>]*min="0"/);
+assert.match(indexHtml, /额外购买一张月卡可提前拿到300钻石/);
+assert.doesNotMatch(
+  indexHtml,
+  /基础购买张数|实际购买张数|monthly-card-adjustment/,
+);
 
 const requestedPaths = [];
 const loaderContext = vm.createContext({

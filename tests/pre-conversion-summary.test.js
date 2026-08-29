@@ -20,6 +20,10 @@ const calculatePreConversionSummary = vm.runInContext(
   "calculatePreConversionSummary",
   calculatorContext,
 );
+const calculateFinalResourceTotals = vm.runInContext(
+  "calculateFinalResourceTotals",
+  calculatorContext,
+);
 const parseResourceAdjustment = vm.runInContext(
   "parseResourceAdjustment",
   calculatorContext,
@@ -72,13 +76,6 @@ const combined = calculatePreConversionSummary({
     { common_paint: 3 },
     { diamond: 5, 灵魂老荷兰: 7 },
   ],
-  resourceAdjustments: {
-    diamond: 1,
-    red_diamond: 2,
-    common_paint: 3,
-    timed_paint: 4,
-    limited_paint: 5,
-  },
   paymentSources: [
     { amount: 60, countsTowardLimitedRecharge: true },
     { amount: 12 },
@@ -91,14 +88,29 @@ const combined = calculatePreConversionSummary({
 });
 
 assert.equal(combined.valid, true);
-assert.equal(combined.resources.diamond, 186);
-assert.equal(combined.resources.red_diamond, 22);
-assert.equal(combined.resources.common_paint, 9);
-assert.equal(combined.resources.timed_paint, 6);
-assert.equal(combined.resources.limited_paint, 15);
+assert.equal(combined.resources.diamond, 185);
+assert.equal(combined.resources.red_diamond, 20);
+assert.equal(combined.resources.common_paint, 6);
+assert.equal(combined.resources.timed_paint, 2);
+assert.equal(combined.resources.limited_paint, 10);
 assert.equal(combined.rmbTotal, 178);
 assert.equal(combined.limitedRechargeRmb, 152);
 assert.equal("pulls" in combined, false);
+
+const combinedFinal = calculateFinalResourceTotals(combined.resources, {
+  diamond: 1,
+  red_diamond: 2,
+  common_paint: 3,
+  timed_paint: 4,
+  limited_paint: 5,
+});
+
+assert.equal(combinedFinal.valid, true);
+assert.equal(combinedFinal.resources.diamond, 186);
+assert.equal(combinedFinal.resources.red_diamond, 22);
+assert.equal(combinedFinal.resources.common_paint, 9);
+assert.equal(combinedFinal.resources.timed_paint, 6);
+assert.equal(combinedFinal.resources.limited_paint, 15);
 
 const structuredAvailability = calculatePreConversionSummary({
   resourceSources: [
@@ -117,39 +129,43 @@ const structuredAvailability = calculatePreConversionSummary({
 assert.equal(structuredAvailability.resources.timed_paint, 20);
 assert.equal(structuredAvailability.resources.limited_paint, 3);
 
-const manualConfirmedResources = calculatePreConversionSummary({
-  resourceAdjustments: { timed_paint: 8, limited_paint: 9 },
-  resourceInstances,
-  targetDate: "",
-  targetBanner: null,
-});
+const manualConfirmedResources = calculateFinalResourceTotals(
+  calculatePreConversionSummary().resources,
+  { timed_paint: 8, limited_paint: 9 },
+);
 
 assert.equal(manualConfirmedResources.resources.timed_paint, 8);
 assert.equal(manualConfirmedResources.resources.limited_paint, 9);
 
-const negativeAdjustments = calculatePreConversionSummary({
+const resourcesBeforeNegativeAdjustments = calculatePreConversionSummary({
   resourceSources: [{ diamond: 500, common_paint: 5 }],
-  resourceAdjustments: {
+});
+const negativeAdjustments = calculateFinalResourceTotals(
+  resourcesBeforeNegativeAdjustments.resources,
+  {
     diamond: -300,
     common_paint: -2,
     timed_paint: -1,
     limited_paint: -3,
   },
-});
+);
 
 assert.equal(negativeAdjustments.resources.diamond, 200);
 assert.equal(negativeAdjustments.resources.common_paint, 3);
 assert.equal(negativeAdjustments.resources.timed_paint, -1);
 assert.equal(negativeAdjustments.resources.limited_paint, -3);
-assert.equal(negativeAdjustments.rmbTotal, 0);
-assert.equal(negativeAdjustments.limitedRechargeRmb, 0);
+assert.equal(resourcesBeforeNegativeAdjustments.rmbTotal, 0);
+assert.equal(resourcesBeforeNegativeAdjustments.limitedRechargeRmb, 0);
 
-const beforeInputChange = calculatePreConversionSummary({
-  resourceAdjustments: { diamond: 1 },
-});
-const afterInputChange = calculatePreConversionSummary({
-  resourceAdjustments: { diamond: -7 },
-});
+const resourcesBeforeInputChange = calculatePreConversionSummary().resources;
+const beforeInputChange = calculateFinalResourceTotals(
+  resourcesBeforeInputChange,
+  { diamond: 1 },
+);
+const afterInputChange = calculateFinalResourceTotals(
+  resourcesBeforeInputChange,
+  { diamond: -7 },
+);
 
 assert.equal(beforeInputChange.resources.diamond, 1);
 assert.equal(afterInputChange.resources.diamond, -7);

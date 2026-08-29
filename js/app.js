@@ -14,7 +14,8 @@ const dateSelectionState = {
 };
 const incomeCardSelections = {
   monthlyCardSelected: false,
-  monthlyCardAdjustment: 0,
+  monthlyCardRemainingDays: 0,
+  monthlyCardExtraPurchases: 0,
   seasonalCardSelected: false,
   annualCardSelected: false,
   catTreatSelected: false,
@@ -51,6 +52,9 @@ let permanentPackView = null;
 let permanentPacks = [];
 let permanentPackRules = null;
 let permanentPackResourceTypes = [];
+const packValuationState = {
+  redDiamondPerPull: null,
+};
 const eventPackPurchaseState = {
   purchases: {},
   resources: {},
@@ -92,6 +96,8 @@ const currencyPackPurchaseState = {
 };
 let currencyPackView = null;
 let currencyPacks = [];
+let eventCurrencyPacks = [];
+let monthlyCardCurrencyPackConfig = null;
 let currencyPackResourceNames = new Map();
 let currencyPacksLoading = true;
 let currencyPacksLoadError = "";
@@ -158,6 +164,25 @@ function updateFixedInventoryAmount(resourceId, value) {
   return updateInventoryAmount("fixedResources", resourceId, value);
 }
 
+function updateMonthlyCardInputState(selectionKey, value) {
+  if (
+    ![
+      "monthlyCardRemainingDays",
+      "monthlyCardExtraPurchases",
+    ].includes(selectionKey)
+  ) {
+    return { valid: false, amount: null, error: "未知的月卡输入。" };
+  }
+
+  const result = parseInventoryAmount(value);
+
+  if (result.valid) {
+    incomeCardSelections[selectionKey] = result.amount;
+  }
+
+  return result;
+}
+
 function getInventoryResourceSources() {
   return [
     inventoryState.fixedResources,
@@ -178,6 +203,22 @@ function renderCurrentResourceTotals(resources) {
   );
 }
 
+function renderFinalResourceTotals() {
+  const result = calculateFinalResourceTotals(
+    currencyPackPurchaseState.resources,
+    otherState.resources,
+  );
+
+  if (!result.valid) {
+    if (preConversionSummaryView) {
+      preConversionSummaryView.error.textContent = result.error;
+    }
+    return;
+  }
+
+  renderCurrentResourceTotals(result.resources);
+}
+
 function updatePreConversionSummaryResult() {
   if (!preConversionSummaryView) {
     return;
@@ -191,7 +232,6 @@ function updatePreConversionSummaryResult() {
       permanentPackState.resources,
       eventPackPurchaseState.resources,
     ],
-    resourceAdjustments: otherState.resources,
     paymentSources: [
       {
         amount: dailyIncomeState.rmbTotal,
@@ -223,12 +263,17 @@ function updatePreConversionSummaryResult() {
   preConversionSummaryState.limitedRechargeRmb =
     result.limitedRechargeRmb;
 
-  renderCurrentResourceTotals(result.resources);
   preConversionSummaryView.rmbTotal.textContent = `¥${result.rmbTotal}`;
   preConversionSummaryView.limitedRechargeRmb.textContent =
     `¥${result.limitedRechargeRmb}`;
   preConversionSummaryView.error.textContent = "";
-  updateCurrencyPacksResult();
+
+  if (currencyPackView) {
+    updateCurrencyPacksResult();
+  } else {
+    currencyPackPurchaseState.resources = { ...result.resources };
+    renderFinalResourceTotals();
+  }
 }
 
 function updateFreeDailyAccumulationResult() {
@@ -250,8 +295,6 @@ function updateFreeDailyAccumulationResult() {
     ? [
         incomeCardView.monthlyDaily,
         incomeCardView.monthlyPurchase,
-        incomeCardView.monthlyBaseCount,
-        incomeCardView.monthlyActualCount,
         incomeCardView.seasonalDaily,
         incomeCardView.seasonalTotal,
         incomeCardView.annualCount,
@@ -319,10 +362,6 @@ function updateFreeDailyAccumulationResult() {
     `${cardResult.monthlyCard.purchaseDiamonds} 钻`;
   incomeCardView.monthlyCost.textContent =
     `¥${cardResult.monthlyCard.purchaseAmountRmb}`;
-  incomeCardView.monthlyBaseCount.textContent =
-    `${cardResult.monthlyCard.basePurchases} 张`;
-  incomeCardView.monthlyActualCount.textContent =
-    `${cardResult.monthlyCard.actualPurchases} 张`;
   incomeCardView.seasonalDaily.textContent =
     `${cardResult.seasonalCard.dailyDiamonds} 钻`;
   incomeCardView.seasonalTotal.textContent =
@@ -350,9 +389,7 @@ function updateFreeDailyAccumulationResult() {
   dailyIncomeState.rmbTotal =
     cardResult.monthlyCard.purchaseAmountRmb;
   dailyIncomeState.limitedRechargeRmb =
-    cardResult.monthlyCard.countsTowardLimitedRecharge
-      ? cardResult.monthlyCard.purchaseAmountRmb
-      : 0;
+    cardResult.monthlyCard.limitedRechargeRmb;
   freeDailyAccumulationView.error.textContent = "";
   incomeCardView.error.textContent = "";
   updatePreConversionSummaryResult();
@@ -423,9 +460,13 @@ function getEventIncomeLabel(status) {
 
 function createEventIncomeCard(event) {
   const card = document.createElement("article");
+  const header = document.createElement("header");
   const heading = document.createElement("h3");
   const income = document.createElement("p");
   const incomeLabel = getEventIncomeLabel(event.status);
+  const sourceEvent = events.find(
+    (candidate) => candidate.id === event.eventId,
+  );
 
   card.className = "income-card event-income-card";
   card.classList.toggle("is-selected", event.selected);
@@ -434,7 +475,16 @@ function createEventIncomeCard(event) {
   card.setAttribute("aria-pressed", String(event.selected));
   heading.textContent = event.eventName;
   income.textContent = `${incomeLabel}：${formatEventResources(event.resources)}`;
-  card.append(heading, income);
+  header.append(heading);
+
+  if (sourceEvent?.isRerun) {
+    const rerunBadge = document.createElement("span");
+    rerunBadge.className = "event-income-rerun-badge";
+    rerunBadge.textContent = "复刻";
+    header.append(rerunBadge);
+  }
+
+  card.append(header, income);
 
   function toggleEvent() {
     if (eventIncomeState.selectedEventIds.has(event.eventId)) {
@@ -558,10 +608,9 @@ function renderPermanentPacks() {
     return;
   }
 
-  const redDiamondPerPull = Number(permanentPackView.redDiamondRate.value);
   const displayResult = getDisplayablePermanentPacks(
     permanentPacks,
-    redDiamondPerPull,
+    packValuationState.redDiamondPerPull,
     permanentPackRules,
   );
 
@@ -607,9 +656,9 @@ function renderPermanentPacks() {
     const heading = document.createElement("h3");
     const price = document.createElement("span");
     const contents = document.createElement("p");
-    const theoreticalPulls = document.createElement("p");
-    const pricePerPull = document.createElement("p");
-    const purchasePrice = document.createElement("p");
+    const valueSummary = document.createElement("p");
+    const theoreticalPulls = document.createElement("span");
+    const pricePerPull = document.createElement("span");
 
     card.className = "income-card permanent-pack-card";
     card.classList.toggle("is-selected", quantity > 0);
@@ -618,22 +667,17 @@ function renderPermanentPacks() {
     card.setAttribute("aria-pressed", String(quantity > 0));
     heading.textContent = pack.name;
     price.className = "permanent-pack-price";
-    price.textContent = `¥${pack.price}`;
+    price.textContent = `¥${pack.price * Math.max(1, quantity)}`;
     header.append(heading, price);
     contents.textContent =
-      `抽卡相关资源：${formatPermanentPackContents(pack.contents)}`;
+      `抽卡资源：${formatPermanentPackContents(pack.contents)}`;
+    valueSummary.className = "permanent-pack-value-summary";
     theoreticalPulls.textContent =
       `理论抽数：${result.theoreticalPulls.toFixed(2)}`;
     pricePerPull.textContent =
-      `理论元/抽：¥${result.pricePerPull.toFixed(2)}`;
-    purchasePrice.textContent = `购买金额：¥${pack.price * quantity}`;
-    card.append(
-      header,
-      contents,
-      theoreticalPulls,
-      pricePerPull,
-      purchasePrice,
-    );
+      `单抽价格：¥${result.pricePerPull.toFixed(2)}`;
+    valueSummary.append(theoreticalPulls, pricePerPull);
+    card.append(header, contents, valueSummary);
 
     if (purchaseLimit > 1 && quantity > 0) {
       const quantityLabel = document.createElement("label");
@@ -713,7 +757,41 @@ function formatEventPackOtherContents(contents) {
     .join("，");
 }
 
-function createEventPackCard(eventPack, pack, purchases) {
+function updatePackValuationRate(rawValue) {
+  packValuationState.redDiamondPerPull = Number(rawValue);
+
+  [
+    permanentPackView?.redDiamondRate,
+    eventPackView?.redDiamondRate,
+  ].forEach((input) => {
+    if (input && input.value !== rawValue) {
+      input.value = rawValue;
+    }
+  });
+
+  renderPermanentPacks();
+  updateEventPacksResult();
+}
+
+function initializePackValuationRate(defaultRate) {
+  if (packValuationState.redDiamondPerPull === null) {
+    packValuationState.redDiamondPerPull = defaultRate;
+  }
+
+  const rawValue = String(packValuationState.redDiamondPerPull);
+
+  [
+    permanentPackView?.redDiamondRate,
+    eventPackView?.redDiamondRate,
+  ].forEach((input) => {
+    if (input) {
+      input.value = rawValue;
+    }
+  });
+}
+
+function createEventPackCard(eventPack, valueResult, purchases) {
+  const { pack } = valueResult;
   const purchase = purchases[pack.id];
   const maximumQuantity = getEventPackMaximumQuantity(
     pack,
@@ -730,7 +808,9 @@ function createEventPackCard(eventPack, pack, purchases) {
   const heading = document.createElement("h4");
   const price = document.createElement("span");
   const contents = document.createElement("p");
-  const purchaseRule = document.createElement("p");
+  const valueSummary = document.createElement("p");
+  const theoreticalPulls = document.createElement("span");
+  const pricePerPull = document.createElement("span");
 
   card.className = "income-card event-pack-card";
   card.classList.toggle("is-selected", purchase.selected);
@@ -741,14 +821,9 @@ function createEventPackCard(eventPack, pack, purchases) {
   card.setAttribute("aria-disabled", String(disabled));
   heading.textContent = pack.name;
   price.className = "permanent-pack-price";
-  price.textContent = `¥${pack.price}`;
+  price.textContent = `¥${pack.price * Math.max(1, purchase.quantity)}`;
   header.append(heading, price);
-  contents.textContent =
-    `抽卡相关资源：${formatEventPackContents(pack.contents)}`;
-  purchaseRule.textContent =
-    pack.purchaseRule.type === "daily"
-      ? `每日限购 ${pack.purchaseRule.limit} 次；当前区间最多 ${maximumQuantity} 份`
-      : `活动期间限购 ${pack.purchaseRule.limit} 次`;
+  contents.textContent = `抽卡资源：${formatEventPackContents(pack.contents)}`;
   card.append(header, contents);
 
   if (pack.otherContents.length > 0) {
@@ -758,7 +833,25 @@ function createEventPackCard(eventPack, pack, purchases) {
     card.append(otherContents);
   }
 
-  card.append(purchaseRule);
+  valueSummary.className = "permanent-pack-value-summary";
+  theoreticalPulls.textContent = valueResult.valid
+    ? `理论抽数：${valueResult.theoreticalPulls.toFixed(2)}`
+    : "理论抽数：—";
+  pricePerPull.textContent =
+    valueResult.valid && valueResult.pricePerPull !== null
+      ? `单抽价格：¥${valueResult.pricePerPull.toFixed(2)}`
+      : "单抽价格：—";
+  valueSummary.append(theoreticalPulls, pricePerPull);
+  card.append(valueSummary);
+
+  if (pack.purchaseRule.type !== "total") {
+    const purchaseRule = document.createElement("p");
+    const periodLabel =
+      pack.purchaseRule.type === "weekly" ? "每周" : "每日";
+    purchaseRule.textContent =
+      `${periodLabel}限购 ${pack.purchaseRule.limit} 次；当前区间最多 ${maximumQuantity} 份`;
+    card.append(purchaseRule);
+  }
 
   if (pack.prerequisites.length > 0) {
     const prerequisites = document.createElement("p");
@@ -877,8 +970,22 @@ function renderEventPackGroups(displayableEventPacks) {
     heading.id = headingId;
     heading.textContent = eventPack.name;
     list.className = "event-pack-card-grid";
-    eventPack.packs.forEach((pack) => {
-      list.append(createEventPackCard(eventPack, pack, purchases));
+    const packValues = eventPack.packs.map((pack) => ({
+      ...calculatePackValue(
+        pack,
+        packValuationState.redDiamondPerPull,
+        permanentPackRules,
+        {
+          targetDate: dateSelectionState.targetDate,
+          targetBanner: dateSelectionState.targetBanner,
+          resourceInstances: summaryResourceInstances,
+        },
+      ),
+      pack,
+    }));
+
+    sortPackValuesByPricePerPull(packValues).forEach((valueResult) => {
+      list.append(createEventPackCard(eventPack, valueResult, purchases));
     });
     group.append(heading, list);
     eventPackView.groups.append(group);
@@ -891,7 +998,6 @@ function updateEventPacksResult() {
   }
 
   eventPackView.groups.replaceChildren();
-  eventPackView.summary.hidden = true;
   eventPackView.error.textContent = "";
   eventPackPurchaseState.resources = {};
   eventPackPurchaseState.totalPrice = 0;
@@ -938,16 +1044,6 @@ function updateEventPacksResult() {
   }
 
   eventPackView.message.textContent = "";
-  eventPackView.summary.hidden = false;
-  eventPackView.totalPrice.textContent = `¥${summary.totalPrice}`;
-  eventPackView.limitedRechargePrice.textContent =
-    `¥${summary.limitedRechargePrice}`;
-  eventPackView.resources.textContent = formatEventPackContents(
-    Object.entries(summary.resources).map(([resourceId, amount]) => ({
-      resourceId,
-      amount,
-    })),
-  );
   renderEventPackGroups(displayableEventPacks);
 }
 
@@ -1202,8 +1298,9 @@ function initializeInventoryModule() {
       timedInventoryFields,
       timedResourceTypes,
       "timedPaintTotals",
-      (resourceType) => resourceType.name,
-      () => "请填写可用于当前目标的限时老荷兰数量",
+      (resourceType) =>
+       `${resourceType.name}（请填写可用于当前目标日期的数量）`,
+      () => "",
     );
   }
 
@@ -1250,10 +1347,9 @@ function initializeInventoryModule() {
       const errorId = `${inputId}-error`;
 
       label.className = "inventory-field";
-      labelText.textContent = resource.name;
-      description.className = "inventory-description";
-      description.textContent =
-        `适用卡池：${dateSelectionState.targetBanner.name}`;
+      labelText.textContent =
+        `限定老荷兰（${resource.name} 适用卡池：${dateSelectionState.targetBanner.name}）`;
+      description.textContent = "";
       input.id = inputId;
       input.type = "number";
       input.min = "0";
@@ -1282,7 +1378,7 @@ function initializeInventoryModule() {
         }
       });
 
-      label.append(labelText, description, input, error);
+      label.append(labelText, input, error);
       limitedInventoryList.append(label);
     });
   }
@@ -1340,12 +1436,21 @@ function initializeFreeDailyAccumulationModule() {
   };
   incomeCardView = {
     monthlyCard: document.querySelector("#monthly-card"),
-    monthlyAdjustment: document.querySelector("#monthly-card-adjustment"),
+    monthlyRemainingDays: document.querySelector(
+      "#monthly-card-remaining-days",
+    ),
+    monthlyRemainingDaysError: document.querySelector(
+      "#monthly-card-remaining-days-error",
+    ),
+    monthlyExtraPurchases: document.querySelector(
+      "#monthly-card-extra-purchases",
+    ),
+    monthlyExtraPurchasesError: document.querySelector(
+      "#monthly-card-extra-purchases-error",
+    ),
     monthlyCost: document.querySelector("#monthly-card-cost"),
     monthlyDaily: document.querySelector("#monthly-card-daily"),
     monthlyPurchase: document.querySelector("#monthly-card-purchase"),
-    monthlyBaseCount: document.querySelector("#monthly-card-base-count"),
-    monthlyActualCount: document.querySelector("#monthly-card-actual-count"),
     seasonalCard: document.querySelector("#seasonal-card"),
     seasonalDaily: document.querySelector("#seasonal-card-daily"),
     seasonalTotal: document.querySelector("#seasonal-card-total"),
@@ -1380,17 +1485,31 @@ function initializeFreeDailyAccumulationModule() {
     "catTreatSelected",
   );
 
-  incomeCardView.monthlyAdjustment.addEventListener("input", () => {
-    const value = incomeCardView.monthlyAdjustment.value;
-    const adjustment = value === "" ? 0 : Number(value);
+  [
+    {
+      input: incomeCardView.monthlyRemainingDays,
+      error: incomeCardView.monthlyRemainingDaysError,
+      selectionKey: "monthlyCardRemainingDays",
+    },
+    {
+      input: incomeCardView.monthlyExtraPurchases,
+      error: incomeCardView.monthlyExtraPurchasesError,
+      selectionKey: "monthlyCardExtraPurchases",
+    },
+  ].forEach(({ input, error, selectionKey }) => {
+    input.addEventListener("input", () => {
+      const result = updateMonthlyCardInputState(
+        selectionKey,
+        input.value,
+      );
 
-    if (!Number.isInteger(adjustment)) {
-      incomeCardView.error.textContent = "月卡调整值必须是整数。";
-      return;
-    }
+      error.textContent = result.error ?? "";
+      input.setAttribute("aria-invalid", String(!result.valid));
 
-    incomeCardSelections.monthlyCardAdjustment = adjustment;
-    updateFreeDailyAccumulationResult();
+      if (result.valid) {
+        updateFreeDailyAccumulationResult();
+      }
+    });
   });
 
   Promise.all([
@@ -1460,7 +1579,7 @@ function initializePermanentPacksModule() {
 
   permanentPackView.redDiamondRate.addEventListener(
     "input",
-    renderPermanentPacks,
+    (event) => updatePackValuationRate(event.target.value),
   );
 
   Promise.all([
@@ -1472,8 +1591,9 @@ function initializePermanentPacksModule() {
       permanentPacks = loadedPacks;
       permanentPackRules = loadedRules;
       permanentPackResourceTypes = loadedResourceTypes;
-      permanentPackView.redDiamondRate.value =
-        String(permanentPackRules.defaultRedDiamondPerPull);
+      initializePackValuationRate(
+        permanentPackRules.defaultRedDiamondPerPull,
+      );
       permanentPackState.quantities = Object.fromEntries(
         permanentPacks.map((pack) => [pack.id, 0]),
       );
@@ -1496,24 +1616,36 @@ function initializePermanentPacksModule() {
 
 function initializeEventPacksModule() {
   eventPackView = {
+    redDiamondRate: document.querySelector(
+      "#event-pack-red-diamond-per-pull",
+    ),
     groups: document.querySelector("#event-pack-groups"),
     message: document.querySelector("#event-packs-message"),
-    summary: document.querySelector("#event-pack-summary"),
-    totalPrice: document.querySelector("#event-pack-total-price"),
-    limitedRechargePrice: document.querySelector(
-      "#event-pack-limited-recharge-price",
-    ),
-    resources: document.querySelector("#event-pack-resource-summary"),
     error: document.querySelector("#event-packs-error"),
   };
 
+  eventPackView.redDiamondRate.addEventListener(
+    "input",
+    (event) => updatePackValuationRate(event.target.value),
+  );
+
   Promise.all([
     loadEventPacks(),
+    loadPermanentPackRules(),
     loadResourceTypes(),
     loadResourceInstances(),
   ])
-    .then(([loadedEventPacks, resourceTypes, resourceInstances]) => {
+    .then(([
+      loadedEventPacks,
+      loadedPackRules,
+      resourceTypes,
+      resourceInstances,
+    ]) => {
       eventPacks = loadedEventPacks;
+      permanentPackRules ??= loadedPackRules;
+      initializePackValuationRate(
+        permanentPackRules.defaultRedDiamondPerPull,
+      );
       summaryResourceInstances = resourceInstances;
       eventPackResourceNames = new Map([
         ...resourceTypes.map((resourceType) => [
@@ -1560,7 +1692,7 @@ function initializeOtherModule() {
       }
 
       otherState.resources[input.dataset.otherResourceId] = result.amount;
-      updatePreConversionSummaryResult();
+      renderFinalResourceTotals();
     });
   });
 }
@@ -1604,6 +1736,25 @@ function formatCurrencyPackRewards(pack) {
   return rewards.length > 0 ? rewards.join("，") : "无";
 }
 
+function synchronizeCurrencyPacks() {
+  const nextCurrencyPacks = getCurrencyPacksForMonthlyCard(
+    eventCurrencyPacks,
+    monthlyCardCurrencyPackConfig,
+    incomeCardSelections.monthlyCardSelected,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+  const nextPurchaseState = synchronizeCurrencyPackPurchaseState(
+    nextCurrencyPacks,
+    currencyPackPurchaseState.purchases,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+
+  currencyPacks = nextCurrencyPacks;
+  currencyPackPurchaseState.purchases = nextPurchaseState;
+}
+
 function createCurrencyPackCard(
   currencyPack,
   valueResult,
@@ -1638,7 +1789,9 @@ function createCurrencyPackCard(
   purchaseLimit.textContent =
     pack.purchaseRule.type === "daily"
       ? `每日限购 ${pack.purchaseRule.limit} 份`
-      : `活动期间限购 ${pack.purchaseRule.limit} 份`;
+      : pack.purchaseRule.type === "weekly"
+        ? `每周限购 ${pack.purchaseRule.limit} 份；当前区间最多 ${maximumQuantity} 份`
+        : `活动期间限购 ${pack.purchaseRule.limit} 份`;
   card.append(header, rewards, purchaseLimit);
 
   if (pack.cost.resourceId === "red_diamond") {
@@ -1781,6 +1934,20 @@ function renderCurrencyPackGroups(displayableCurrencyPacks) {
     heading.textContent = currencyPack.name;
     group.append(heading);
 
+    if (currencyPack.source === "monthly_card") {
+      const list = document.createElement("div");
+
+      list.className = "event-pack-card-grid";
+      groups.diamond.forEach((valueResult) => {
+        list.append(
+          createCurrencyPackCard(currencyPack, valueResult, purchases),
+        );
+      });
+      group.append(list);
+      currencyPackView.groups.append(group);
+      return;
+    }
+
     [
       ["diamond", "钻石礼包"],
       ["red_diamond", "红钻礼包"],
@@ -1810,6 +1977,7 @@ function updateCurrencyPacksResult() {
     return;
   }
 
+  synchronizeCurrencyPacks();
   currencyPackView.groups.replaceChildren();
   currencyPackView.error.textContent = "";
   currencyPackPurchaseState.costs = { diamond: 0, red_diamond: 0 };
@@ -1817,7 +1985,7 @@ function updateCurrencyPacksResult() {
   currencyPackPurchaseState.resources = {
     ...preConversionSummaryState.resources,
   };
-  renderCurrentResourceTotals(currencyPackPurchaseState.resources);
+  renderFinalResourceTotals();
 
   if (currencyPacksLoading) {
     currencyPackView.message.textContent =
@@ -1856,7 +2024,7 @@ function updateCurrencyPacksResult() {
   currencyPackPurchaseState.costs = result.costs;
   currencyPackPurchaseState.rewards = result.rewards;
   currencyPackPurchaseState.resources = result.resources;
-  renderCurrentResourceTotals(result.resources);
+  renderFinalResourceTotals();
   currencyPackView.message.textContent = "";
   renderCurrencyPackGroups(displayableCurrencyPacks);
 
@@ -1876,11 +2044,19 @@ function initializeCurrencyPacksModule() {
 
   Promise.all([
     loadCurrencyPacks(),
+    loadIncomeCardRules(),
     loadResourceTypes(),
     loadResourceInstances(),
   ])
-    .then(([loadedCurrencyPacks, resourceTypes, resourceInstances]) => {
-      currencyPacks = loadedCurrencyPacks;
+    .then(([
+      loadedCurrencyPacks,
+      loadedIncomeCardRules,
+      resourceTypes,
+      resourceInstances,
+    ]) => {
+      eventCurrencyPacks = loadedCurrencyPacks;
+      monthlyCardCurrencyPackConfig =
+        loadedIncomeCardRules.monthlyCard.weeklyDiscountCurrencyPack;
       summaryResourceInstances = resourceInstances;
       currencyPackResourceNames = new Map([
         ...resourceTypes.map((resourceType) => [
@@ -1891,15 +2067,16 @@ function initializeCurrencyPacksModule() {
           .filter((resource) => typeof resource.name === "string")
           .map((resource) => [resource.id, resource.name]),
       ]);
-      currencyPackPurchaseState.purchases =
-        createCurrencyPackPurchaseState(currencyPacks);
+      synchronizeCurrencyPacks();
       currencyPacksLoadError =
-        currencyPacks.length === 0
+        eventCurrencyPacks.length === 0
           ? "没有可用的钻石 / 红钻礼包数据。"
           : "";
     })
     .catch(() => {
       currencyPacks = [];
+      eventCurrencyPacks = [];
+      monthlyCardCurrencyPackConfig = null;
       currencyPackPurchaseState.purchases = {};
       currencyPacksLoadError =
         "钻石 / 红钻礼包数据加载失败，请使用本地开发服务器打开页面。";

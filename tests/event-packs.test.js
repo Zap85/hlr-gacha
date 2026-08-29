@@ -20,6 +20,9 @@ const resourceTypeData = JSON.parse(
 const resourceInstanceData = JSON.parse(
   readProjectFile(path.join("data", "resources", "test-resources.json")),
 );
+const constantsData = JSON.parse(
+  readProjectFile(path.join("data", "constants.json")),
+);
 const eventData = JSON.parse(
   readProjectFile(path.join("data", "events", "test-event.json")),
 );
@@ -47,6 +50,13 @@ assert.doesNotMatch(
   indexHtml,
   /<details class="pack-disclosure event-packs-disclosure" open>/,
 );
+assert.match(
+  indexHtml,
+  /id="event-pack-red-diamond-per-pull"[^>]*value="70\.71"/,
+);
+assert.doesNotMatch(indexHtml, /id="event-pack-summary"/);
+assert.doesNotMatch(indexHtml, /id="event-pack-total-price"/);
+assert.doesNotMatch(indexHtml, /id="event-pack-resource-summary"/);
 
 const findPack = (id) => packs.find((pack) => pack.id === id);
 const findContent = (pack, resourceId) =>
@@ -124,6 +134,128 @@ const calculateEventPackPurchaseSummary = vm.runInContext(
   "calculateEventPackPurchaseSummary",
   calculatorContext,
 );
+const calculatePackValue = vm.runInContext(
+  "calculatePackValue",
+  calculatorContext,
+);
+const sortPackValuesByPricePerPull = vm.runInContext(
+  "sortPackValuesByPricePerPull",
+  calculatorContext,
+);
+
+const sortablePackValues = [
+  { pack: { id: "original-first" }, pricePerPull: 5 },
+  { pack: { id: "equal-price-first" }, pricePerPull: 2 },
+  { pack: { id: "no-price-first" }, pricePerPull: null },
+  { pack: { id: "equal-price-second" }, pricePerPull: 2 },
+  { pack: { id: "no-price-second" }, pricePerPull: null },
+];
+assert.deepEqual(
+  Array.from(
+    sortPackValuesByPricePerPull(sortablePackValues),
+    (value) => value.pack.id,
+  ),
+  [
+    "equal-price-first",
+    "equal-price-second",
+    "original-first",
+    "no-price-first",
+    "no-price-second",
+  ],
+);
+assert.deepEqual(
+  sortablePackValues.map((value) => value.pack.id),
+  [
+    "original-first",
+    "equal-price-first",
+    "no-price-first",
+    "equal-price-second",
+    "no-price-second",
+  ],
+);
+
+const valuationRules = constantsData.constants.permanentPackCalculation;
+const valuationPack = {
+  id: "event-pack-valuation-test",
+  name: "活动礼包估值测试",
+  price: 110,
+  contents: [
+    { resourceId: "diamond", amount: 150 },
+    { resourceId: "red_diamond", amount: 70.71 },
+    { resourceId: "common_paint", amount: 2 },
+    { resourceId: "timed-paint-sample-2", amount: 3 },
+    { resourceId: "灵魂老荷兰", amount: 4 },
+    { resourceId: "not-a-pull-resource", amount: 999 },
+  ],
+};
+const activeValuation = calculatePackValue(
+  valuationPack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-08-12",
+    targetBanner: { id: "庄园诡戏", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(activeValuation.valid, true);
+assert.equal(activeValuation.theoreticalPulls, 11);
+assert.equal(activeValuation.pricePerPull, 10);
+
+const expiredTimedPaintValuation = calculatePackValue(
+  valuationPack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-08-17",
+    targetBanner: { id: "庄园诡戏", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(expiredTimedPaintValuation.theoreticalPulls, 8);
+
+const mismatchedLimitedPaintValuation = calculatePackValue(
+  valuationPack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-08-12",
+    targetBanner: { id: "下一站世界与你", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(mismatchedLimitedPaintValuation.theoreticalPulls, 7);
+
+const birthdayPaintValuation = calculatePackValue(
+  {
+    id: "birthday-paint-valuation-test",
+    name: "生日限定估值测试",
+    price: 10,
+    contents: [{ resourceId: "甜蜜老荷兰", amount: 2 }],
+  },
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-08-01",
+    targetBanner: { id: "罗夏生日", tags: ["birthday"] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(birthdayPaintValuation.theoreticalPulls, 2);
+
+const zeroPullValuation = calculatePackValue(
+  {
+    id: "zero-pull-valuation-test",
+    name: "零抽估值测试",
+    price: 3,
+    contents: [{ resourceId: "not-a-pull-resource", amount: 1 }],
+  },
+  70.71,
+  valuationRules,
+);
+assert.equal(zeroPullValuation.valid, true);
+assert.equal(zeroPullValuation.theoreticalPulls, 0);
+assert.equal(zeroPullValuation.pricePerPull, null);
 
 const secondDisplayPack = {
   ...eventPackData,

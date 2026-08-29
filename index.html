@@ -14,7 +14,7 @@
       <div class="calculator-layout">
         <aside class="calculator-sidebar">
       <section aria-labelledby="date-section-title">
-        <h2 id="date-section-title">日期与计算方式</h2>
+        <h2 id="date-section-title">日期选择</h2>
 
         <div class="date-fields">
           <label>
@@ -67,18 +67,15 @@
       <section aria-labelledby="inventory-section-title">
         <h2 id="inventory-section-title">库存资源</h2>
 
-        <h3>固定资源</h3>
         <div id="fixed-inventory-fields" class="inventory-fields">
           <p>正在加载资源类型…</p>
         </div>
         <p id="inventory-error" class="inventory-error" aria-live="polite"></p>
 
-        <h3>限时老荷兰</h3>
         <div id="timed-inventory-fields" class="inventory-fields">
           <p>正在加载资源类型…</p>
         </div>
 
-        <h3>限定老荷兰</h3>
         <div id="limited-inventory-list" class="inventory-fields"></div>
         <p id="limited-inventory-message">正在加载资源实例…</p>
         <p id="dynamic-inventory-error" class="inventory-error" aria-live="polite"></p>
@@ -153,37 +150,44 @@
             </header>
             <p>每日钻石收入：<output id="monthly-card-daily">—</output></p>
             <p>购买立即获得：<output id="monthly-card-purchase">—</output></p>
-            <p>基础购买张数：<output id="monthly-card-base-count">—</output></p>
             <label>
-              调整值
-              <input id="monthly-card-adjustment" type="number" step="1" value="0">
+              当前月卡剩余天数
+              <input id="monthly-card-remaining-days" type="number" min="0" step="1" value="0" aria-describedby="monthly-card-remaining-days-error">
+              <small id="monthly-card-remaining-days-error" class="inventory-input-error"></small>
             </label>
-            <p>实际购买张数：<output id="monthly-card-actual-count">—</output></p>
+            <label>
+              额外购买月卡数量
+              <input id="monthly-card-extra-purchases" type="number" min="0" step="1" value="0" aria-describedby="monthly-card-extra-purchases-description monthly-card-extra-purchases-error">
+              <small id="monthly-card-extra-purchases-description" class="inventory-description">额外购买一张月卡可提前拿到300钻石</small>
+              <small id="monthly-card-extra-purchases-error" class="inventory-input-error"></small>
+            </label>
           </article>
 
-          <article id="seasonal-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
-            <header>
-              <h3>季卡</h3>
-            </header>
-            <p>每日收入：<output id="seasonal-card-daily">—</output></p>
-            <p>当前区间合计：<output id="seasonal-card-total">—</output></p>
-          </article>
+          <div class="income-card-secondary-column">
+            <article id="seasonal-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+              <header>
+                <h3>季旅专列</h3>
+              </header>
+              <p>每日钻石收入：<output id="seasonal-card-daily">—</output></p>
+              <output id="seasonal-card-total" hidden>—</output>
+            </article>
 
-          <article id="annual-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
-            <header>
-              <h3>年卡</h3>
-            </header>
-            <p>有效 23 日：<output id="annual-card-count">—</output></p>
-            <p>共获得：<output id="annual-card-paint">—</output></p>
-          </article>
+            <article id="annual-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+              <header>
+                <h3>罐罐计划</h3>
+              </header>
+              <output id="annual-card-count" hidden>—</output>
+              <p>共获得：<output id="annual-card-paint">—</output></p>
+            </article>
 
-          <article id="cat-treat-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
-            <header>
-              <h3>猫条</h3>
-            </header>
-            <p>有效 23 日：<output id="cat-treat-count">—</output></p>
-            <p>共获得：<output id="cat-treat-paint">—</output></p>
-          </article>
+            <article id="cat-treat-card" class="income-card" role="button" tabindex="0" aria-pressed="false">
+              <header>
+                <h3>猫条计划</h3>
+              </header>
+              <output id="cat-treat-count" hidden>—</output>
+              <p>共获得：<output id="cat-treat-paint">—</output></p>
+            </article>
+          </div>
         </div>
         <p id="free-accumulation-error" class="date-error" aria-live="polite"></p>
         <p id="income-card-error" class="date-error" aria-live="polite"></p>
@@ -209,10 +213,10 @@
 
       <section aria-labelledby="permanent-packs-section-title">
         <details class="pack-disclosure">
-          <summary id="permanent-packs-section-title">新人和等级礼包</summary>
+          <summary id="permanent-packs-section-title">常驻礼包</summary>
           <div class="pack-disclosure-content">
             <label>
-              红钻理论折算率（红钻 / 抽）
+              自定义红钻折算率（红钻 / 抽）（默认值1980红钻=28抽）
               <input id="red-diamond-per-pull" type="number" min="0.01" step="0.01" value="70.71">
             </label>
             <div id="permanent-pack-list" class="permanent-pack-grid"></div>
@@ -225,22 +229,12 @@
         <details class="pack-disclosure event-packs-disclosure">
           <summary id="event-packs-section-title">活动礼包</summary>
           <div class="pack-disclosure-content">
+            <label>
+              自定义红钻折算率（红钻 / 抽）（默认值1980红钻=28抽）
+              <input id="event-pack-red-diamond-per-pull" type="number" min="0.01" step="0.01" value="70.71">
+            </label>
             <p id="event-packs-message" aria-live="polite">正在加载活动礼包数据。</p>
             <div id="event-pack-groups" class="event-pack-groups"></div>
-            <dl id="event-pack-summary" class="event-pack-summary" hidden>
-              <div>
-                <dt>活动礼包金额</dt>
-                <dd><output id="event-pack-total-price">¥0</output></dd>
-              </div>
-              <div>
-                <dt>计入限时累充金额</dt>
-                <dd><output id="event-pack-limited-recharge-price">¥0</output></dd>
-              </div>
-              <div>
-                <dt>抽卡资源增加</dt>
-                <dd><output id="event-pack-resource-summary">无</output></dd>
-              </div>
-            </dl>
             <p id="event-packs-error" class="date-error" aria-live="polite"></p>
           </div>
         </details>
@@ -250,9 +244,9 @@
         <details class="pack-disclosure currency-packs-disclosure">
           <summary id="currency-packs-section-title">钻石 / 红钻礼包</summary>
           <div class="pack-disclosure-content">
+            <p id="currency-packs-error" class="date-error" aria-live="polite"></p>
             <p id="currency-packs-message" aria-live="polite">正在加载钻石 / 红钻礼包数据。</p>
             <div id="currency-pack-groups" class="event-pack-groups"></div>
-            <p id="currency-packs-error" class="date-error" aria-live="polite"></p>
           </div>
         </details>
       </section>
