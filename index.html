@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>时空中的绘旅人攒抽计算器</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="docs/user-guide.css">
   </head>
   <body>
     <main>
-      <h1>时空中的绘旅人攒抽计算器</h1>
-      <p>开发测试版</p>
+      <header class="site-header">
+        <div class="site-title-row">
+          <h1>时空中的绘旅人攒抽计算器</h1>
+          <button id="user-guide-toggle" class="user-guide-toggle" type="button" aria-controls="user-guide-modal" aria-haspopup="dialog">使用说明</button>
+        </div>
+        <p>开发测试版</p>
+      </header>
+
+      <div id="user-guide-modal" class="user-guide-modal" hidden>
+        <div class="user-guide-backdrop" aria-hidden="true"></div>
+        <div class="user-guide-dialog" role="dialog" aria-modal="true" aria-label="使用说明">
+          <button id="user-guide-close" class="user-guide-close" type="button" aria-label="关闭使用说明">×</button>
+          <div id="user-guide-body" class="user-guide-body" aria-live="polite"></div>
+        </div>
+      </div>
 
       <div class="calculator-layout">
         <aside class="calculator-sidebar">
@@ -64,25 +78,11 @@
         <p id="date-error" class="date-error" aria-live="polite"></p>
       </section>
 
-      <section aria-labelledby="inventory-section-title">
-        <h2 id="inventory-section-title">库存资源</h2>
-
-        <div id="fixed-inventory-fields" class="inventory-fields">
-          <p>正在加载资源类型…</p>
-        </div>
-        <p id="inventory-error" class="inventory-error" aria-live="polite"></p>
-
-        <div id="timed-inventory-fields" class="inventory-fields">
-          <p>正在加载资源类型…</p>
-        </div>
-
-        <div id="limited-inventory-list" class="inventory-fields"></div>
-        <p id="limited-inventory-message">正在加载资源实例…</p>
-        <p id="dynamic-inventory-error" class="inventory-error" aria-live="polite"></p>
-      </section>
-
       <section aria-labelledby="pre-conversion-section-title">
-        <h2 id="pre-conversion-section-title">资源总计</h2>
+        <div class="resource-total-heading">
+          <h2 id="pre-conversion-section-title">资源总计</h2>
+          <output id="available-pulls-total">0 抽</output>
+        </div>
         <dl class="accumulation-summary">
           <div>
             <dt>钻石</dt>
@@ -101,11 +101,11 @@
             <dd><output id="pre-conversion-timed-paint">0</output></dd>
           </div>
           <div>
-            <dt>限定老荷兰</dt>
+            <dt id="pre-conversion-limited-paint-label">限定老荷兰</dt>
             <dd><output id="pre-conversion-limited-paint">0</output></dd>
           </div>
           <div>
-            <dt>人民币总金额</dt>
+            <dt>氪金总金额</dt>
             <dd><output id="pre-conversion-rmb-total">¥0</output></dd>
           </div>
           <div>
@@ -118,6 +118,28 @@
         </aside>
 
         <div class="calculator-workflow">
+
+      <section aria-labelledby="inventory-section-title">
+        <h2 id="inventory-section-title">库存资源</h2>
+
+        <div id="fixed-inventory-fields" class="inventory-fields">
+          <p>正在加载资源类型…</p>
+        </div>
+        <p id="inventory-error" class="inventory-error" aria-live="polite"></p>
+
+        <div class="dynamic-inventory-fields">
+          <div id="timed-inventory-fields" class="inventory-fields">
+            <p>正在加载资源类型…</p>
+          </div>
+
+          <div class="limited-inventory-group">
+            <div id="limited-inventory-heading" class="limited-inventory-heading">限定老荷兰</div>
+            <div id="limited-inventory-list" class="inventory-fields"></div>
+            <p id="limited-inventory-message" class="limited-inventory-status">正在加载资源实例…</p>
+          </div>
+        </div>
+        <p id="dynamic-inventory-error" class="inventory-error" aria-live="polite"></p>
+      </section>
 
       <section aria-labelledby="free-accumulation-section-title">
         <h2 id="free-accumulation-section-title">日常收入</h2>
@@ -194,21 +216,25 @@
       </section>
 
       <section aria-labelledby="event-income-section-title">
-        <h2 id="event-income-section-title">活动收入</h2>
-        <p id="event-income-message" aria-live="polite">正在加载活动数据。</p>
-        <div id="event-income-groups" class="event-income-groups" hidden>
-          <section aria-labelledby="current-events-title">
-            <h3 id="current-events-title">当前活动</h3>
-            <div id="current-event-income-list" class="event-income-list"></div>
-            <p id="current-events-empty" hidden>暂无可计入的当前活动。</p>
-          </section>
-          <section aria-labelledby="future-events-title">
-            <h3 id="future-events-title">未来活动</h3>
-            <div id="future-event-income-list" class="event-income-list"></div>
-            <p id="future-events-empty" hidden>暂无可计入的未来活动。</p>
-          </section>
-        </div>
-        <p id="event-income-error" class="date-error" aria-live="polite"></p>
+        <details class="pack-disclosure event-income-disclosure">
+          <summary id="event-income-section-title">活动收入</summary>
+          <div class="pack-disclosure-content">
+            <p id="event-income-message" aria-live="polite">正在加载活动数据。</p>
+            <div id="event-income-groups" class="event-income-groups" hidden>
+              <section aria-labelledby="current-events-title">
+                <h3 id="current-events-title">当前活动</h3>
+                <div id="current-event-income-list" class="event-income-list"></div>
+                <p id="current-events-empty" hidden>暂无可计入的当前活动。</p>
+              </section>
+              <section aria-labelledby="future-events-title">
+                <h3 id="future-events-title">未来活动</h3>
+                <div id="future-event-income-list" class="event-income-list"></div>
+                <p id="future-events-empty" hidden>暂无可计入的未来活动。</p>
+              </section>
+            </div>
+            <p id="event-income-error" class="date-error" aria-live="polite"></p>
+          </div>
+        </details>
       </section>
 
       <section aria-labelledby="permanent-packs-section-title">
@@ -252,38 +278,42 @@
       </section>
 
       <section aria-labelledby="other-section-title">
-        <h2 id="other-section-title">个性化调整</h2>
-        <p>资源手动调整区。正数增加资源，负数扣除资源。</p>
-        <div class="inventory-fields">
-          <label class="inventory-field">
-            额外钻石
-            <input id="other-diamond" type="number" step="1" value="0" data-other-resource-id="diamond">
-          </label>
-          <label class="inventory-field">
-            额外红钻
-            <input id="other-red-diamond" type="number" step="1" value="0" data-other-resource-id="red_diamond">
-          </label>
-          <label class="inventory-field">
-            额外老荷兰颜料
-            <input id="other-common-paint" type="number" step="1" value="0" data-other-resource-id="common_paint">
-          </label>
-          <label class="inventory-field">
-            额外限时老荷兰
-            <span class="inventory-description">调整已确认可用于当前目标的总量</span>
-            <input id="other-timed-paint" type="number" step="1" value="0" data-other-resource-id="timed_paint">
-          </label>
-          <label class="inventory-field">
-            额外限定老荷兰
-            <span class="inventory-description">调整已确认可用于当前目标卡池的总量</span>
-            <input id="other-limited-paint" type="number" step="1" value="0" data-other-resource-id="limited_paint">
-          </label>
-        </div>
-        <p id="other-error" class="inventory-error" aria-live="polite"></p>
+        <details class="pack-disclosure other-disclosure">
+          <summary id="other-section-title">个性化调整</summary>
+          <div class="pack-disclosure-content">
+            <p>资源手动调整区。正数增加资源，负数扣除资源。</p>
+            <div class="inventory-fields">
+              <label class="inventory-field">
+                额外钻石
+                <input id="other-diamond" type="number" step="1" value="0" data-other-resource-id="diamond">
+              </label>
+              <label class="inventory-field">
+                额外红钻
+                <input id="other-red-diamond" type="number" step="1" value="0" data-other-resource-id="red_diamond">
+              </label>
+              <label class="inventory-field">
+                额外老荷兰颜料
+                <input id="other-common-paint" type="number" step="1" value="0" data-other-resource-id="common_paint">
+              </label>
+              <label class="inventory-field">
+                额外限时老荷兰
+                <span class="inventory-description">调整已确认可用于当前目标的总量</span>
+                <input id="other-timed-paint" type="number" step="1" value="0" data-other-resource-id="timed_paint">
+              </label>
+              <label class="inventory-field">
+                额外限定老荷兰
+                <span class="inventory-description">调整已确认可用于当前目标卡池的总量</span>
+                <input id="other-limited-paint" type="number" step="1" value="0" data-other-resource-id="limited_paint">
+              </label>
+            </div>
+            <p id="other-error" class="inventory-error" aria-live="polite"></p>
+          </div>
+        </details>
       </section>
 
       <section aria-labelledby="future-calculation-section-title">
         <h2 id="future-calculation-section-title">后续计算模块</h2>
-        <p>更多资源消费与最终折算功能将在后续开发。</p>
+        <p>更多功能将在后续开发。</p>
       </section>
         </div>
       </div>

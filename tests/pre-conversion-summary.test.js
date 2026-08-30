@@ -24,6 +24,10 @@ const calculateFinalResourceTotals = vm.runInContext(
   "calculateFinalResourceTotals",
   calculatorContext,
 );
+const calculateAvailablePulls = vm.runInContext(
+  "calculateAvailablePulls",
+  calculatorContext,
+);
 const parseResourceAdjustment = vm.runInContext(
   "parseResourceAdjustment",
   calculatorContext,
@@ -50,7 +54,10 @@ const indexHtml = readProjectFile("index.html");
 assert.match(indexHtml, /个性化调整/);
 assert.match(indexHtml, /资源总计/);
 assert.doesNotMatch(indexHtml, /额外氪金金额|other-rmb-amount/);
-assert.doesNotMatch(indexHtml, /id="pre-conversion-[^"]*pull/);
+assert.match(indexHtml, /id="available-pulls-total">0 抽<\/output>/);
+assert.match(indexHtml, /id="pre-conversion-limited-paint-label"/);
+assert.match(indexHtml, />氪金总金额</);
+assert.doesNotMatch(indexHtml, />人民币总金额</);
 
 assert.equal(parseResourceAdjustment("").amount, 0);
 assert.equal(parseResourceAdjustment("0").amount, 0);
@@ -111,6 +118,26 @@ assert.equal(combinedFinal.resources.red_diamond, 22);
 assert.equal(combinedFinal.resources.common_paint, 9);
 assert.equal(combinedFinal.resources.timed_paint, 6);
 assert.equal(combinedFinal.resources.limited_paint, 15);
+
+const availablePulls = calculateAvailablePulls(combinedFinal.resources);
+assert.equal(availablePulls.valid, true);
+assert.equal(availablePulls.pulls, 186 / 150 + 9 + 6 + 15);
+
+const customDateAvailablePulls = calculateAvailablePulls(
+  combinedFinal.resources,
+  { includeLimitedPaint: false },
+);
+assert.equal(customDateAvailablePulls.valid, true);
+assert.equal(customDateAvailablePulls.pulls, 186 / 150 + 9 + 6);
+
+const redDiamondExcluded = calculateAvailablePulls({
+  diamond: 50,
+  red_diamond: 9999,
+  common_paint: 0,
+  timed_paint: 0,
+  limited_paint: 0,
+});
+assert.equal(redDiamondExcluded.pulls, 50 / 150);
 
 const structuredAvailability = calculatePreConversionSummary({
   resourceSources: [

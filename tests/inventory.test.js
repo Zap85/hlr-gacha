@@ -247,7 +247,14 @@ assert.equal(
 );
 
 assert.match(indexHtml, /id="limited-inventory-list"/);
-assert.match(indexHtml, /id="limited-inventory-message"/);
+assert.match(
+  indexHtml,
+  /id="limited-inventory-heading"[^>]*>限定老荷兰<\/div>/,
+);
+assert.match(
+  indexHtml,
+  /id="limited-inventory-message" class="limited-inventory-status"/,
+);
 assert.doesNotMatch(
   indexHtml,
   /limited-resource-select|add-limited-resource|limited-add-error/,

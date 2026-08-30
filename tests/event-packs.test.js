@@ -224,7 +224,16 @@ const mismatchedLimitedPaintValuation = calculatePackValue(
     resourceInstances: resourceInstanceData.resources,
   },
 );
-assert.equal(mismatchedLimitedPaintValuation.theoreticalPulls, 7);
+assert.equal(mismatchedLimitedPaintValuation.theoreticalPulls, 11);
+assert.equal(mismatchedLimitedPaintValuation.pricePerPull, 10);
+assert.equal(
+  mismatchedLimitedPaintValuation.theoreticalPulls,
+  activeValuation.theoreticalPulls,
+);
+assert.equal(
+  mismatchedLimitedPaintValuation.pricePerPull,
+  activeValuation.pricePerPull,
+);
 
 const birthdayPaintValuation = calculatePackValue(
   {

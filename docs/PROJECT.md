@@ -39,7 +39,9 @@ hlr gacha/
 │     ├─ resource.template.json
 │     └─ test-resources.json
 ├─ docs/
-│  └─ PROJECT.md
+│  ├─ PROJECT.md
+│  ├─ user-guide.html
+│  └─ user-guide.css
 └─ AGENTS.md
 ```
 
@@ -49,6 +51,8 @@ hlr gacha/
 - 计算层：`calculator.js` 负责纯计算，不直接操作页面。
 - 数据加载层：`data-loader.js` 负责加载和基础校验 JSON 数据，不负责业务计算。
 - 数据层：`data/` 下的 JSON 保存游戏规则、活动、卡池和礼包等数据。
+
+面向最终用户的长篇使用说明独立维护在 `docs/user-guide.html`，`docs/user-guide.css` 只负责该正文自身的排版。主页面仅负责加载和展示说明，不在 `index.html` 或 `app.js` 中复制说明正文，以避免内容与页面逻辑重复维护。
 
 数据文件名表达其维护职责：`*-types.json` 保存可复用规则或类型定义，`*.template.json` 是人工或 AI 维护数据时参考的结构模板且不参与业务加载，`test-*.json` 是当前开发阶段使用的真实数据实例。`sample-*` 不再承担模板语义。
 
@@ -168,7 +172,9 @@ Event 仍使用已有的 `targetDate` 阶段判断，不改为逐日交集。Eve
 
 常驻礼包与 Event Pack 共用一套 RMB pack valuation。共享参数 `redDiamondPerPull` 默认为 `1980 / 28`，即约 70.71 红钻/抽；理论抽数按钻石 `amount / 150`、红钻 `amount / redDiamondPerPull`、普通老荷兰 `amount` 累加。`theoreticalPulls` 与 `pricePerPull` 均允许小数，内部保留完整精度。该参数只用于人民币礼包的理论估值，不代表实际转换库存红钻。
 
-Event Pack 的结构化限时老荷兰只有在 `targetDate` 位于对应实例的 `availableFrom` 至 `expiresAt` 时才计入理论抽数；限定老荷兰只有在实例的 `applicability` 通过当前 `targetBanner` 的 `banner_id` 或 `banner_tag` 匹配时才计入。资源类型和适用性均依据稳定 ID 与结构化数据判断，不从显示名称推断。
+礼包理论估值与当前目标资源可用性是两个不同阶段。Event Pack 与 Currency Pack 的 `theoreticalPulls` 衡量礼包本身包含多少抽卡资源，因此具体实例只要 `category` 为 `limited_paint`，就按 `amount` 计入，不受当前 `targetBanner` 的 `banner_id` 或 `banner_tag` 匹配结果影响。Event Pack 中的结构化 `timed_paint` 仍只有在 `targetDate` 位于 `availableFrom` 至 `expiresAt` 时才计入理论抽数，两类资源不能使用同一种估值判断；这不表示扩展 Currency Pack 当前支持的估值资源类型。
+
+上述估值规则不会改变资源结算规则。限定老荷兰在库存自动匹配，以及 Event Pack、Currency Pack 奖励进入当前资源总计时，仍通过 `applicability` 判断是否适用于 `targetBanner`；限时老荷兰也继续按目标日期判断有效性。这样礼包自身价值不会随所选卡池变化，同时资源总计仍只包含当前目标实际可用的资源。
 
 RMB 礼包估值使用的 `redDiamondPerPull` 与 Currency Pack 红钻礼包按 `redDiamondCost / theoreticalPulls` 得出的实际消费效率是两个独立概念，不得共用。礼包购买后，资源增加量为 `contents × 实际购买数量`，RMB 与限时累充金额按项目的价格、数量及 `countsTowardLimitedRecharge` 规则汇总。
 
@@ -186,7 +192,9 @@ Currency Pack 表示使用游戏内钻石或红钻支付的资源购买项目，
 
 Event-scoped Currency Pack 可以通过稳定 `eventId` 关联 Event，并维护自己的 `startDate` 和 `endDate`；只有用户基础计算区间与该有效期存在交集时才可用。条件型或周期型 Currency Pack 不要求关联 Event，也不强制具有活动日期，其可用性由自身业务条件决定，但复用相同的购买、余额校验和资源结算逻辑。
 
-Currency Pack 的 `contents`、`otherContents`、`prerequisites`、`trigger` 和 `deferredRewards` 沿用 Event Pack 的语义。同一活动的钻石礼包与红钻礼包保存在同一个文件中，并根据 `cost.resourceId` 区分。钻石礼包不计算性价比；红钻礼包根据抽卡资源计算 `theoreticalPulls`，并以 `redDiamondCost / theoreticalPulls` 得到实际的单抽红钻价。这个消费效率与 RMB 礼包的共享理论估值参数相互独立。
+Currency Pack 的 `contents`、`otherContents`、`prerequisites`、`trigger` 和 `deferredRewards` 沿用 Event Pack 的语义。同一活动的钻石礼包与红钻礼包保存在同一个文件中，并根据 `cost.resourceId` 区分。钻石礼包不计算性价比；红钻礼包按当前实现支持的抽卡资源类型计算 `theoreticalPulls`，其中 `limited_paint` 不检查当前 `targetBanner`，再以 `redDiamondCost / theoreticalPulls` 得到实际的单抽红钻价。理论抽数为 0 时，单抽红钻价为 `null`，前端以“—”表示。
+
+Currency Pack 的单抽红钻价表示实际红钻消耗效率；RMB 常驻礼包与 Event Pack 共享的 `redDiamondPerPull` 则是理论估值参数。两者不得共用状态或公式。
 
 计算层保留 Currency Pack 购买前的资源状态，并在其上扣除 `cost`、加入 `contents`，派生当前资源状态。购买不得使钻石或红钻余额为负，也不会自动进行红钻转钻石或钻石转抽数。
 
@@ -199,6 +207,8 @@ Currency Pack 的 `contents`、`otherContents`、`prerequisites`、`trigger` 和
 用户界面只展示一套权威的“资源总计”。内部先汇总库存、日常收入、活动收入、常驻礼包和 Event Pack，得到 Currency Pack 购买前资源；Currency Pack 只以这一状态进行余额校验，并在其上扣除 `cost`、加入 `contents`；个性化调整最后应用，得到最终资源总计。
 
 因此，个性化调整的正数不能帮助购买 Currency Pack，负数也不会造成 Currency Pack 余额不足、取消礼包或改变数量。负调整可以使最终资源为负数，结果不得自动截断为 0。各资源类型始终独立，RMB 总计和限时累充金额仍只受实际人民币购买项目影响。
+
+`availablePulls` 是最终资源总计派生出的当前目标可用抽数，按 `diamond / 150 + common_paint + timed_paint + limited_paint` 计算。它使用 Currency Pack 结算并应用个性化调整后的最终资源，其中限定老荷兰只取当前目标下实际可用的数量；红钻不参与该结果，也不会被自动转换为钻石或抽数。该派生计算保留负调整的真实结果，不自行截断为 0。
 
 ## 页面信息架构
 

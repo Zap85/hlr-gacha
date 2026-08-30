@@ -1,0 +1,48 @@
+.user-guide-content,
+.user-guide-content * {
+  box-sizing: border-box;
+}
+
+.user-guide-content {
+  width: 100%;
+  max-width: 52rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.user-guide-content h2 {
+  margin: 0 0 1rem;
+}
+
+.user-guide-content h3 {
+  margin: 1.5rem 0 0.625rem;
+}
+
+.user-guide-content p {
+  margin: 0.75rem 0;
+}
+
+.user-guide-content ol,
+.user-guide-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.user-guide-content li + li {
+  margin-top: 0.35rem;
+}
+
+.user-guide-content a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.user-guide-content a:hover {
+  opacity: 0.7;
+}
+
+.user-guide-content > :last-child {
+  margin-bottom: 0;
+}

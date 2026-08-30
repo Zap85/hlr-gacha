@@ -355,12 +355,18 @@ assert.deepEqual(
     nonApplicableGrouped.red_diamond,
     (result) => result.theoreticalPulls,
   ),
-  [28, 6, 0, 0],
+  [12, 15, 28, 6],
 );
-assert.equal(
-  nonApplicableGrouped.red_diamond[2].redDiamondPerPull,
-  null,
-);
+nonApplicableGrouped.red_diamond.forEach((result, index) => {
+  assert.equal(
+    result.theoreticalPulls,
+    grouped.red_diamond[index].theoreticalPulls,
+  );
+  assert.equal(
+    result.redDiamondPerPull,
+    grouped.red_diamond[index].redDiamondPerPull,
+  );
+});
 assert.equal(nonApplicableGrouped.red_diamond.length, 4);
 
 function selectPack(
@@ -614,6 +620,28 @@ update = selectPack(
 limitedPurchaseState = update.purchaseState;
 assert.equal(update.summary.rewards.limited_paint, 12);
 assert.equal(update.summary.resources.limited_paint, 15);
+const nonApplicableLimitedPurchase = updateCurrencyPackPurchase(
+  [currencyPackData],
+  createCurrencyPackPurchaseState([currencyPackData]),
+  currencyPackData.id,
+  "庄园颜料特惠包",
+  true,
+  1,
+  baseResources,
+  "2026-08-28",
+  "2026-09-02",
+  otherBanner,
+  resourceInstances,
+);
+assert.equal(nonApplicableLimitedPurchase.valid, true);
+assert.equal(
+  nonApplicableLimitedPurchase.summary.rewards.limited_paint ?? 0,
+  0,
+);
+assert.equal(
+  nonApplicableLimitedPurchase.summary.resources.limited_paint,
+  baseResources.limited_paint,
+);
 const cancelledLimitedPurchase = updateCurrencyPackPurchase(
   [currencyPackData],
   limitedPurchaseState,

@@ -469,9 +469,14 @@ function calculatePackValue(
     const resource = resourceInstancesById.get(resourceId);
 
     if (
-      ["timed_paint", "limited_paint"].includes(resource?.category) &&
+      resource?.category === "timed_paint" &&
       isResourceInstanceAvailable(resource, targetDate, targetBanner)
     ) {
+      theoreticalPulls += amount;
+      return;
+    }
+
+    if (resource?.category === "limited_paint") {
       theoreticalPulls += amount;
     }
   });
@@ -1133,6 +1138,32 @@ function calculateFinalResourceTotals(
   };
 }
 
+function calculateAvailablePulls(
+  resources,
+  { includeLimitedPaint = true } = {},
+) {
+  const amounts = [
+    resources?.diamond ?? 0,
+    resources?.common_paint ?? 0,
+    resources?.timed_paint ?? 0,
+    resources?.limited_paint ?? 0,
+  ];
+
+  if (amounts.some((amount) => !Number.isFinite(amount))) {
+    return { valid: false, error: "可用抽数资源无效。" };
+  }
+
+  return {
+    valid: true,
+    error: null,
+    pulls:
+      amounts[0] / 150 +
+      amounts[1] +
+      amounts[2] +
+      (includeLimitedPaint ? amounts[3] : 0),
+  };
+}
+
 function isCurrencyPackVisible(currentDate, targetDate, currencyPack) {
   const currentTimestamp = parseCalendarDate(currentDate);
   const targetTimestamp = parseCalendarDate(targetDate);
@@ -1224,10 +1255,7 @@ function calculateCurrencyPackValue(
 
     const resource = resourceInstancesById.get(resourceId);
 
-    if (
-      resource?.category === "limited_paint" &&
-      isResourceInstanceAvailable(resource, targetDate, targetBanner)
-    ) {
+    if (resource?.category === "limited_paint") {
       theoreticalPulls += amount;
     }
   });

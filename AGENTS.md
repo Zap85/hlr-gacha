@@ -131,7 +131,9 @@
 - permanent pack 数据保存礼包事实，包括稳定 `id`、`name`、`price`、固定 `purchaseLimit` 或结构化 `purchaseRule`、`contents` 和 `countsTowardLimitedRecharge`；不得保存 `theoreticalPulls` 或 `pricePerPull`。
 - 常驻礼包与 Event Pack 共享同一个 `redDiamondPerPull` 理论估值参数，默认值为 `1980 / 28`（约 70.71 红钻/抽）；该参数只用于 RMB 礼包估值，不得触发实际红钻转换。
 - 理论抽数按钻石 `amount / 150`、红钻 `amount / redDiamondPerPull`、普通老荷兰 `amount` 计算；`theoreticalPulls` 和 `pricePerPull` 允许小数，内部不得提前取整。
-- Event Pack 中的限时老荷兰仅在 `targetDate` 位于实例的 `availableFrom` 至 `expiresAt` 时计入理论抽数；限定老荷兰仅在实例 `applicability` 通过当前 `targetBanner` 的 `banner_id` 或 `banner_tag` 匹配时计入。不得按显示名称判断。
+- Event Pack 与 Currency Pack 的 `theoreticalPulls` 衡量礼包本身包含的抽卡资源：具体资源实例只要 `category: "limited_paint"` 就按 `amount` 计入，不受当前 `targetBanner` 的 `banner_id` 或 `banner_tag` 匹配结果影响。
+- Event Pack 中的 `timed_paint` 在理论估值时仍须根据 `targetDate`、`availableFrom` 和 `expiresAt` 判断有效性；不得把它与 `limited_paint` 的估值规则合并，也不得借此扩展 Currency Pack 当前未支持的估值资源类型。
+- 礼包估值不改变当前目标资源可用性：限定老荷兰进入库存或购买后资源总计时，仍必须按当前 `targetBanner` 的 `applicability` 判断。
 - RMB 礼包的 `redDiamondPerPull` 理论估值与 Currency Pack 红钻礼包的 `redDiamondCost / theoreticalPulls` 实际消费效率完全独立，不得共用或混淆。
 - 购买结果按 `contents × 实际购买数量` 增加资源，并按 `price × 实际购买数量` 累计人民币金额。
 
@@ -152,7 +154,8 @@
 - Currency Pack 使用 `cost` 表示支付资源，不得使用人民币项目的 `price` 或 `countsTowardLimitedRecharge`；当前 `cost.resourceId` 只支持 `diamond` 和 `red_diamond`。
 - Currency Pack 不增加 RMB，也不计入限时累充；`contents`、`otherContents`、`prerequisites`、`trigger`、`deferredRewards` 沿用 Event Pack 的数据语义。
 - 同一 Currency Pack 文件同时保存钻石礼包和红钻礼包，前端按 `cost.resourceId` 分组，不得拆成两套数据。
-- 钻石礼包不计算性价比。红钻礼包计算 `theoreticalPulls` 和 `redDiamondPerPull = redDiamondCost / theoreticalPulls`；该实际消费效率不得使用 RMB 礼包的理论估值参数。
+- 钻石礼包不计算性价比。红钻礼包按当前实现支持的抽卡资源类型计算 `theoreticalPulls`，其中 `limited_paint` 不检查 `targetBanner`；`redDiamondPerPull = redDiamondCost / theoreticalPulls`，理论抽数为 0 时该值为 `null`，前端以“—”表示。
+- Currency Pack 的单抽红钻价表示实际红钻消耗效率，与 RMB 常驻礼包和 Event Pack 共享的 `redDiamondPerPull` 理论估值参数完全独立，不得共用状态或公式。
 - Currency Pack 必须在购买前资源状态上扣除 `cost`、加入 `contents` 后派生当前资源状态，不得直接修改购买前汇总；购买不得使钻石或红钻余额为负。
 - Currency Pack 计算不得自动进行红钻转钻石或钻石转抽数。
 - 月卡每周优惠十连是条件型 Currency Pack，仅在月卡启用时可用，每周限购 1 次，以 1200 钻石兑换 10 个普通老荷兰；它不依赖 Event 日期，不产生 RMB，也不计入限时累充。
@@ -167,6 +170,7 @@
 - `diamond`、`red_diamond`、`common_paint`、`timed_paint`、`limited_paint` 必须保持独立，不得自动进行红钻转换或钻石转抽。
 - 库存、收入、人民币礼包、Currency Pack 或个性化调整变化后，资源总计必须即时反映当前状态。
 - 手动调整可能使最终汇总为负数，不得自动截断为 0。
+- `availablePulls` 必须基于应用 Currency Pack 与个性化调整后的最终资源总计计算：`diamond / 150 + common_paint + timed_paint + limited_paint`。`red_diamond` 不自动计入；`limited_paint` 只使用当前目标下实际可用的最终数量，计算结果不得擅自截断为 0。
 - RMB 总计和限时累充金额只受实际人民币购买项目影响；游戏内钻石、红钻消费不得计入 RMB。
 
 ## 页面信息架构约束
@@ -185,6 +189,9 @@
 - calculator.js 只负责纯计算，不直接操作 DOM。
 - app.js 只负责用户交互和页面更新，不自行实现核心计算规则。
 - data-loader.js 只负责数据加载和基础数据校验，不负责业务计算。
+- 用户说明内容必须与主页面代码分离；修改面向用户的长篇说明时，优先维护 `docs/user-guide.html`，不得将正文复制到 `index.html` 或 `app.js`。
+- `isResourceInstanceAvailable()` 表达当前目标下资源是否可用，会被库存筛选、资源汇总和奖励结算等场景复用；不得为了礼包理论估值改变其 `limited_paint` applicability 语义。
+- 修改资源可用性 helper 前必须检查全部调用方；礼包估值需要不同语义时，应在估值函数中单独表达或使用估值专用 helper。
 - 不得自行假设或补充游戏规则。
 - 不得在没有明确需求时增加功能。
 - 修改一个模块时，尽量不要修改无关模块。

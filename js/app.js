@@ -191,16 +191,51 @@ function getInventoryResourceSources() {
   ];
 }
 
+function formatAvailablePulls(pulls) {
+  return String(Number(pulls.toFixed(2)));
+}
+
 function renderCurrentResourceTotals(resources) {
   if (!preConversionSummaryView) {
     return;
   }
 
+  const hasTargetBanner =
+    dateSelectionState.targetMode === "banner" &&
+    dateSelectionState.targetBanner !== null;
+  const applicableLimitedPaintResources =
+    getApplicableLimitedPaintResources(
+      summaryResourceInstances,
+      dateSelectionState.targetMode,
+      dateSelectionState.targetBanner,
+    );
+  const limitedPaintNames = applicableLimitedPaintResources.map(
+    (resource) => resource.name,
+  );
+
+  preConversionSummaryView.limitedPaintLabel.textContent =
+    limitedPaintNames.length > 0
+      ? `限定老荷兰（${limitedPaintNames.join("、")}）`
+      : "限定老荷兰";
+
   Object.entries(preConversionSummaryView.resources).forEach(
     ([resourceId, output]) => {
+      if (resourceId === "limited_paint" && !hasTargetBanner) {
+        output.textContent = "—";
+        return;
+      }
+
       output.textContent = String(resources[resourceId] ?? 0);
     },
   );
+
+  const availablePullsResult = calculateAvailablePulls(resources, {
+    includeLimitedPaint: hasTargetBanner,
+  });
+  preConversionSummaryView.availablePulls.textContent =
+    availablePullsResult.valid
+      ? `${formatAvailablePulls(availablePullsResult.pulls)} 抽`
+      : "—";
 }
 
 function renderFinalResourceTotals() {
@@ -1207,6 +1242,9 @@ function initializeInventoryModule() {
   const limitedInventoryMessage = document.querySelector(
     "#limited-inventory-message",
   );
+  const limitedInventoryHeading = document.querySelector(
+    "#limited-inventory-heading",
+  );
   const inventoryError = document.querySelector("#inventory-error");
   const dynamicInventoryError = document.querySelector(
     "#dynamic-inventory-error",
@@ -1307,21 +1345,27 @@ function initializeInventoryModule() {
   function renderLimitedInventoryList() {
     limitedInventoryList.replaceChildren();
     limitedInventoryMessage.textContent = "";
+    limitedInventoryHeading.hidden = true;
+    limitedInventoryMessage.hidden = true;
+
+    function showLimitedInventoryStatus(message) {
+      limitedInventoryHeading.hidden = false;
+      limitedInventoryMessage.hidden = false;
+      limitedInventoryMessage.textContent = message;
+    }
 
     if (limitedResourcesLoading) {
-      limitedInventoryMessage.textContent = "正在加载资源实例…";
+      showLimitedInventoryStatus("正在加载资源实例…");
       return;
     }
 
     if (dateSelectionState.targetMode !== "banner") {
-      limitedInventoryMessage.textContent =
-        "限定老荷兰仅在按卡池计算时可填写";
+      showLimitedInventoryStatus("限定老荷兰仅在按卡池计算时可填写");
       return;
     }
 
     if (!dateSelectionState.targetBanner) {
-      limitedInventoryMessage.textContent =
-        "请选择有效的卡池后填写限定老荷兰";
+      showLimitedInventoryStatus("请选择有效的卡池后填写限定老荷兰");
       return;
     }
 
@@ -1332,8 +1376,7 @@ function initializeInventoryModule() {
     );
 
     if (applicableResources.length === 0) {
-      limitedInventoryMessage.textContent =
-        "当前卡池没有已配置的限定老荷兰";
+      showLimitedInventoryStatus("当前卡池没有已配置的限定老荷兰");
       return;
     }
 
@@ -1418,7 +1461,9 @@ function initializeInventoryModule() {
     .catch(() => {
       limitedResourcesLoading = false;
       limitedInventoryList.replaceChildren();
-      limitedInventoryMessage.textContent = "";
+      limitedInventoryHeading.hidden = false;
+      limitedInventoryMessage.hidden = false;
+      limitedInventoryMessage.textContent = "限定老荷兰数据加载失败";
       dynamicInventoryError.textContent =
         "动态资源加载失败，请使用本地开发服务器打开页面。";
     });
@@ -1718,22 +1763,29 @@ function initializePreConversionSummaryModule() {
     limitedRechargeRmb: document.querySelector(
       "#pre-conversion-limited-recharge-rmb",
     ),
+    availablePulls: document.querySelector("#available-pulls-total"),
+    limitedPaintLabel: document.querySelector(
+      "#pre-conversion-limited-paint-label",
+    ),
     error: document.querySelector("#pre-conversion-error"),
   };
 
   updatePreConversionSummaryResult();
 }
 
-function formatCurrencyPackRewards(pack) {
-  const rewards = [
-    ...pack.contents.map(
+function formatCurrencyPackContents(contents) {
+  return contents
+    .map(
       ({ resourceId, amount }) =>
         `${currencyPackResourceNames.get(resourceId) ?? resourceId}×${amount}`,
-    ),
-    ...pack.otherContents.map(({ name, amount }) => `${name}×${amount}`),
-  ];
+    )
+    .join("，");
+}
 
-  return rewards.length > 0 ? rewards.join("，") : "无";
+function formatCurrencyPackOtherContents(contents) {
+  return contents
+    .map(({ name, amount }) => `${name}×${amount}`)
+    .join("，");
 }
 
 function synchronizeCurrencyPacks() {
@@ -1772,8 +1824,6 @@ function createCurrencyPackCard(
   const header = document.createElement("header");
   const heading = document.createElement("h4");
   const cost = document.createElement("span");
-  const rewards = document.createElement("p");
-  const purchaseLimit = document.createElement("p");
   const costName = pack.cost.resourceId === "diamond" ? "钻石" : "红钻";
 
   card.className = "income-card event-pack-card currency-pack-card";
@@ -1783,28 +1833,48 @@ function createCurrencyPackCard(
   card.setAttribute("aria-pressed", String(purchase.selected));
   heading.textContent = pack.name;
   cost.className = "permanent-pack-price";
-  cost.textContent = `${pack.cost.amount} ${costName}`;
+  cost.textContent =
+    `${pack.cost.amount * Math.max(1, purchase.quantity)} ${costName}`;
   header.append(heading, cost);
-  rewards.textContent = `奖励：${formatCurrencyPackRewards(pack)}`;
-  purchaseLimit.textContent =
-    pack.purchaseRule.type === "daily"
-      ? `每日限购 ${pack.purchaseRule.limit} 份`
-      : pack.purchaseRule.type === "weekly"
-        ? `每周限购 ${pack.purchaseRule.limit} 份；当前区间最多 ${maximumQuantity} 份`
-        : `活动期间限购 ${pack.purchaseRule.limit} 份`;
-  card.append(header, rewards, purchaseLimit);
+  card.append(header);
+
+  if (pack.contents.length > 0) {
+    const contents = document.createElement("p");
+    contents.textContent =
+      `抽卡资源：${formatCurrencyPackContents(pack.contents)}`;
+    card.append(contents);
+  }
+
+  if (pack.otherContents.length > 0) {
+    const otherContents = document.createElement("p");
+    otherContents.textContent =
+      `其他资源：${formatCurrencyPackOtherContents(pack.otherContents)}`;
+    card.append(otherContents);
+  }
 
   if (pack.cost.resourceId === "red_diamond") {
-    const theoreticalPulls = document.createElement("p");
-    const redDiamondPerPull = document.createElement("p");
+    const valueSummary = document.createElement("p");
+    const theoreticalPulls = document.createElement("span");
+    const redDiamondPerPull = document.createElement("span");
 
+    valueSummary.className = "permanent-pack-value-summary";
     theoreticalPulls.textContent =
       `理论抽数：${valueResult.theoreticalPulls}`;
     redDiamondPerPull.textContent =
       `单抽红钻价：${valueResult.redDiamondPerPull === null
         ? "—"
         : valueResult.redDiamondPerPull.toFixed(2)}`;
-    card.append(theoreticalPulls, redDiamondPerPull);
+    valueSummary.append(theoreticalPulls, redDiamondPerPull);
+    card.append(valueSummary);
+  }
+
+  if (pack.purchaseRule.type !== "total") {
+    const purchaseLimit = document.createElement("p");
+    purchaseLimit.textContent =
+      pack.purchaseRule.type === "weekly"
+        ? `每周限购 ${pack.purchaseRule.limit} 份；当前区间最多 ${maximumQuantity} 份`
+        : `每日限购 ${pack.purchaseRule.limit} 份`;
+    card.append(purchaseLimit);
   }
 
   pack.prerequisites.forEach((prerequisiteId) => {
@@ -2087,7 +2157,63 @@ function initializeCurrencyPacksModule() {
     });
 }
 
+function initializeUserGuideModule() {
+  const toggle = document.querySelector("#user-guide-toggle");
+  const modal = document.querySelector("#user-guide-modal");
+  const backdrop = modal.querySelector(".user-guide-backdrop");
+  const closeButton = document.querySelector("#user-guide-close");
+  const body = document.querySelector("#user-guide-body");
+  let isLoaded = false;
+  let loadPromise = null;
+
+  function loadUserGuide() {
+    body.textContent = "正在加载使用说明……";
+    loadPromise = fetch("docs/user-guide.html")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("使用说明加载失败");
+        }
+
+        return response.text();
+      })
+      .then((html) => {
+        body.innerHTML = html;
+        isLoaded = true;
+      })
+      .catch(() => {
+        body.textContent = "使用说明加载失败，请稍后重试。";
+        loadPromise = null;
+      });
+  }
+
+  function openUserGuide() {
+    modal.hidden = false;
+    document.body.classList.add("user-guide-modal-open");
+    closeButton.focus();
+
+    if (!isLoaded && loadPromise === null) {
+      loadUserGuide();
+    }
+  }
+
+  function closeUserGuide() {
+    modal.hidden = true;
+    document.body.classList.remove("user-guide-modal-open");
+    toggle.focus();
+  }
+
+  toggle.addEventListener("click", openUserGuide);
+  closeButton.addEventListener("click", closeUserGuide);
+  backdrop.addEventListener("click", closeUserGuide);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) {
+      closeUserGuide();
+    }
+  });
+}
+
 if (typeof document !== "undefined") {
+  initializeUserGuideModule();
   initializeDateModule();
   initializeInventoryModule();
   initializeFreeDailyAccumulationModule();
