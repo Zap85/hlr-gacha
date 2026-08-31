@@ -1,13 +1,18 @@
 "use strict";
 
-const BANNER_PATHS = ["data/banners/test-banner.json"];
+const BANNER_PATHS = ["data/banners/banners.json"];
 const RESOURCE_TYPES_PATH = "data/resources/resource-types.json";
-const RESOURCE_INSTANCES_PATH = "data/resources/test-resources.json";
+const RESOURCE_INSTANCES_PATH = "data/resources/resources.json";
 const CONSTANTS_PATH = "data/constants.json";
 const EVENT_TYPES_PATH = "data/events/event-types.json";
-const EVENTS_PATH = "data/events/test-event.json";
+const EVENTS_PATH = "data/events/events.json";
+const RECHARGE_EVENTS_PATH =
+  "data/recharge-events/recharge-events.json";
 const PERMANENT_PACKS_PATH = "data/packs/permanent-packs.json";
-const EVENT_PACK_PATHS = ["data/packs/event-packs/庄园诡戏.json"];
+const EVENT_PACK_PATHS = [
+  "data/packs/event-packs/庄园诡戏.json",
+  "data/packs/event-packs/怪谈活动.json",
+];
 const CURRENCY_PACK_PATHS = [
   "data/packs/currency-packs/庄园诡戏.json",
 ];
@@ -397,6 +402,43 @@ async function loadEvents(path = EVENTS_PATH) {
   });
 }
 
+function isValidRechargeEvent(rechargeEvent) {
+  return (
+    rechargeEvent !== null &&
+    typeof rechargeEvent === "object" &&
+    typeof rechargeEvent.id === "string" &&
+    rechargeEvent.id.trim() !== "" &&
+    typeof rechargeEvent.name === "string" &&
+    rechargeEvent.name.trim() !== "" &&
+    isValidCalendarDate(rechargeEvent.startDate) &&
+    isValidCalendarDate(rechargeEvent.endDate) &&
+    rechargeEvent.startDate <= rechargeEvent.endDate
+  );
+}
+
+async function loadRechargeEvents(path = RECHARGE_EVENTS_PATH) {
+  const response = await fetch(path);
+
+  if (!response.ok) {
+    throw new Error(`无法读取限时累充数据：${path}`);
+  }
+
+  const data = await response.json();
+  const rechargeEvents = Array.isArray(data)
+    ? data.filter(isValidRechargeEvent)
+    : [];
+  const rechargeEventIds = new Set();
+
+  return rechargeEvents.filter((rechargeEvent) => {
+    if (rechargeEventIds.has(rechargeEvent.id)) {
+      return false;
+    }
+
+    rechargeEventIds.add(rechargeEvent.id);
+    return true;
+  });
+}
+
 function isValidPermanentPack(pack) {
   const hasFixedPurchaseLimit =
     Number.isSafeInteger(pack?.purchaseLimit) && pack.purchaseLimit >= 1;
@@ -510,12 +552,40 @@ function isValidEventPackOtherContent(content) {
   );
 }
 
-function isValidEventPackDeferredReward(reward) {
+function isValidFixedDateDeferredReward(reward) {
   return (
     isValidEventPackOtherContent(reward) &&
     isValidCalendarDate(reward.availableDate) &&
     (reward.note === undefined || typeof reward.note === "string")
   );
+}
+
+function isValidEventPackDeferredReward(reward, validResourceIds) {
+  if (reward?.type !== "relative_daily") {
+    return isValidFixedDateDeferredReward(reward);
+  }
+
+  if (
+    !Number.isSafeInteger(reward.startOffsetDays) ||
+    reward.startOffsetDays < 0 ||
+    !Number.isSafeInteger(reward.days) ||
+    reward.days <= 0 ||
+    !Number.isSafeInteger(reward.intervalDays) ||
+    reward.intervalDays <= 0 ||
+    !Array.isArray(reward.contents) ||
+    reward.contents.length === 0 ||
+    !reward.contents.every((content) =>
+      isValidEventPackContent(content, validResourceIds),
+    ) ||
+    (reward.note !== undefined && typeof reward.note !== "string")
+  ) {
+    return false;
+  }
+
+  const resourceIds = new Set(
+    reward.contents.map((content) => content.resourceId),
+  );
+  return resourceIds.size === reward.contents.length;
 }
 
 function isValidEventPackPurchaseRule(purchaseRule) {
@@ -564,7 +634,9 @@ function isValidEventPackItem(pack, validResourceIds) {
     ) ||
     !isValidEventPackTrigger(pack.trigger) ||
     !Array.isArray(pack.deferredRewards) ||
-    !pack.deferredRewards.every(isValidEventPackDeferredReward)
+    !pack.deferredRewards.every((reward) =>
+      isValidEventPackDeferredReward(reward, validResourceIds),
+    )
   ) {
     return false;
   }
@@ -692,7 +764,7 @@ function isValidCurrencyPackItem(pack, validResourceIds) {
     ) ||
     !isValidEventPackTrigger(pack.trigger) ||
     !Array.isArray(pack.deferredRewards) ||
-    !pack.deferredRewards.every(isValidEventPackDeferredReward)
+    !pack.deferredRewards.every(isValidFixedDateDeferredReward)
   ) {
     return false;
   }

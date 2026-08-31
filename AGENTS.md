@@ -30,7 +30,8 @@
 
 - `*-types.json` 保存可复用的规则或类型定义。
 - `*.template.json` 只作为人工或 AI 维护数据时使用的结构模板，不得参与正式业务加载。
-- `test-*.json` 保存当前开发阶段使用的真实数据实例；不得再使用 `sample-*` 表示模板。
+- `data/banners/banners.json`、`data/events/events.json` 和 `data/resources/resources.json` 分别保存正式 Banner、Event 与具体资源实例。
+- `data/recharge-events/recharge-events.json` 保存正式 Recharge Event，`recharge-event.template.json` 只作为维护模板，不参与业务加载。
 - 礼包数据统一存放在 `data/packs/`：固定人民币礼包使用 `permanent-packs.json`，Event Pack 和 Currency Pack 分别使用 `event-packs/`、`currency-packs/`。
 - Event Pack 和活动范围内的 Currency Pack 按一次活动一个 JSON 文件维护；不关联 Event 的条件型或周期型 Currency Pack 不受此规则约束。
 
@@ -51,9 +52,9 @@
 
 - Event 表示活动本身及免费活动收入，Event Pack 表示人民币限时礼包；两者是独立实体，不得混用。
 - `data/events/event-types.json` 维护活动类型模板，具体 Event 通过稳定 `type` 引用模板，不得重复保存模板收入。
-- `data/events/test-event.json` 只保存开发测试用的具体 Event 实例，不承担活动类型模板定义职责。
+- `data/events/events.json` 保存具体 Event 实例，不承担活动类型模板定义职责。
 - 实际活动收入为 type 模板值加 Event 的 `incomeAdjustment`；调整分别支持 `available`、`complete`，值可以为正数、0 或负数，未填写的资源视为 0。
-- Event 与 Banner 不建立显式关联。活动收入只比较 Event 的 `startDate`、`endDate` 与当前 `targetDate`：目标早于开始日期时不计入，开始日期至结束日期前使用 `available`，到达或超过结束日期时使用 `complete`。
+- Event 与 Banner 不建立显式关联。活动收入先以 `currentDate > event.endDate` 判断活动已经错过并不计入；尚未错过时由 `targetDate` 决定阶段：目标早于开始日期时不计入，开始日期至结束日期前使用 `available`，到达或超过结束日期时使用 `complete`。不得因 `currentDate` 位于活动期间而强制使用 `available`。
 - 活动收入仅在“目标方式 = 选择卡池”时生效；自定义日期模式不得计入活动收入。
 - `isRerun: true` 表示复刻活动并默认不选中；普通活动默认选中。用户可以独立切换每个活动的选择状态。
 - Event 的 `status` 只允许 `current` 或 `future`，必须由数据明确维护，不得根据日期推断；当前活动显示“可计入”，未来活动显示“预计可计入”，后者表示估算收入而非最终准确奖励。
@@ -114,16 +115,16 @@
 - “日常收入”是当前唯一确认的基础区间例外：使用统一的 `todayIncomeClaimed`（“今日收入已领取”）开关，默认 `true`；为 `true` 时按 `(currentDate, targetDate]` 计算，为 `false` 时按 `[currentDate, targetDate]` 计算。该开关统一控制当天的每日任务、每周分享、签到、月末奖励及各类日常持续收益，不得拆分为多个当天确认项。
 - 月卡使用非负整数 `remainingDays` 和 `extraPurchases`；`remainingDays` 默认 0，且 0 明确表示没有已有月卡覆盖。正数剩余天数在 `todayIncomeClaimed: true` 时覆盖 `remainingDays` 天，在 `false` 时覆盖 `remainingDays + 1` 天。
 - 月卡复用日常收入有效天数 `monthlyIncomeDays`：`uncoveredDays = max(0, monthlyIncomeDays - existingCoveredDays)`，`requiredPurchases = ceil(uncoveredDays / 30)`，`purchaseCount = requiredPurchases + extraPurchases`。不得使用负数调整购买数量。
-- 月卡启用时默认购买足够张数覆盖整个计算区间，每日增加 50 钻；每购买一张立即增加 300 钻，并分别增加 30 元 RMB 和 30 元限时累充金额。月卡未启用时，上述收入、购买及金额均为 0。
+- 月卡启用时默认购买足够张数覆盖整个计算区间，每日增加 50 钻；每购买一张立即增加 300 钻并增加 30 元 RMB。是否实际计入某一期限时累充，必须由 Recharge Event 的独立规则判断。月卡未启用时，上述收入、购买及金额均为 0。
 - 月卡启用后，月签到中的钻石奖励翻倍，老荷兰颜料不翻倍；翻倍结果必须合并在原“月签到奖励”中，不得建立重复收入项目。
 - 月卡是长期可持续购买项目，其购买数量和购买金额由日常收入模块处理。
 - 季卡在日常收入模块只处理启用后的每日 50 钻；购买价格、购买立即奖励等购买行为归入后续活动礼包。
 - 年卡每月 23 日增加 5 个老荷兰颜料，猫条每月 23 日增加 1 个老荷兰颜料；日常收入模块只处理其周期性收益，购买价格和购买行为归入后续活动礼包。
-- 所有实际人民币付费项目的数据模型必须支持 `price` 和 `countsTowardLimitedRecharge`；`price` 表示人民币价格，`countsTowardLimitedRecharge` 表示是否计入限时累充，后者仅供内部计算，不要求前端展示。
+- 所有实际人民币付费项目的数据模型必须支持 `price` 和 `countsTowardLimitedRecharge`；`price` 表示人民币价格，`countsTowardLimitedRecharge` 只表示该项目具备计入限时累充的资格，是否实际计入仍须结合购买时间或可购买时间与所选 Recharge Event 判断。
 - 所有人民币付费项目默认 `countsTowardLimitedRecharge: true`；只有用户明确指出“不计入限时累充”时，才可设为 `false`。
 - 不得建立独立的“氪金.md”或重复的中央氪金表；`price`、`countsTowardLimitedRecharge` 等属性必须跟随具体付费项目保存。
 - 常驻礼包归入 permanent pack 数据；活动礼包以及季卡、年卡、猫条等限时购买行为归入 event pack / 活动礼包数据。不得在多个数据文件中重复维护同一付费项目的价格或累充属性。
-- RMB 按 `price × 实际购买数量` 累计；`countsTowardLimitedRecharge` 决定是否计入限时累充。只有实际人民币付费项目影响这两项金额，Currency Pack 等游戏内资源消费不得计入。
+- RMB 按 `price × 实际购买数量` 累计；只有实际人民币付费项目影响氪金总金额和限时累充金额，Currency Pack 等游戏内资源消费不得计入。
 
 ## 常驻礼包（Permanent Pack）与人民币礼包估值约束
 
@@ -141,10 +142,21 @@
 
 - Event Pack 数据存放在 `data/packs/event-packs/`，每个礼包 Event 使用一个 JSON 文件维护。
 - Event 与 Event Pack 是独立实体，通过稳定 `eventId` 关联；Event 可以没有对应礼包，Event Pack 不得与 Banner 强制绑定。
-- `contents` 只保存参与攒抽计算的资源；`otherContents` 只用于记录或展示非抽卡奖励；`deferredRewards` 表示延期奖励，不自动计入当前抽卡资源。
+- `contents` 只保存即时参与攒抽计算的资源；`otherContents` 只用于记录或展示非抽卡奖励；`deferredRewards.type = "relative_daily"` 使用 `startOffsetDays`、`days`、`intervalDays` 和 `contents` 表示购买后的周期发放，`note` 只能说明，不得参与计算。
+- `relative_daily` 默认购买日为基础计算区间与 Event Pack 有效期交集的首日，即 `max(currentDate, eventPack.startDate)`；Event Pack 的 `endDate` 只限制购买，不得截断购买后已经开始的延期发放。
+- Event Pack 的 `theoreticalPulls` 必须计入 `relative_daily` 承诺的全部奖励，不受 `targetDate` 截断；资源总计只计入奖励日期不晚于 `targetDate` 的实际到账部分。
 - `purchaseRule.type = total` 表示整个 Event Pack 有效期内的总限购，`purchaseRule.type = daily` 表示每日限购。
 - `prerequisites` 使用稳定 pack id 表示购买前置关系；`pull_count` trigger 与前置关系分离，当前只展示触发条件，不自动判断解锁。
 - 同一礼包内重复的同一种抽卡资源可以合并记录。
+
+## 限时累充约束
+
+- Recharge Event 是独立的限时累充有效期实体，只记录稳定 `id`、`name`、`startDate` 和 `endDate`，不得与 Banner、Event 或 Event Pack 强绑定。
+- “资源总计”只负责最终资源与 `availablePulls`；“氪金总计”负责整个方案的氪金总金额、所选 Recharge Event 和该期实际计入的限时累充金额。
+- `countsTowardLimitedRecharge: true` 只表示 RMB 项目具备计入资格，不代表无条件计入所选 Recharge Event。
+- 已选择且具备资格的 Permanent Pack 默认可安排在所选 Recharge Event 内购买。Event Pack 只有可购买区间与 Recharge Event 有交集时才可计入：`total` 计入已选择数量，`daily` 只计基础计算区间、Event Pack 有效期和 Recharge Event 三者交集内实际可购买的份数。
+- 月卡的 `requiredPurchases` 与 `extraPurchases` 仍决定整个方案的总购买数；限时累充必须按连续覆盖需求计算该期可合理安排的 `eligibleRequiredPurchases`，再与 `extraPurchases` 相加得到本期可计入上限。用户设置的本期实际数量不得超过该上限，且只影响限时累充金额，不得改变月卡总购买数、资源收益或氪金总金额。
+- Currency Pack 等非 RMB 消费不得计入氪金总金额或限时累充金额。
 
 ## 钻石 / 红钻礼包约束
 
@@ -160,7 +172,7 @@
 - Currency Pack 计算不得自动进行红钻转钻石或钻石转抽数。
 - 月卡每周优惠十连是条件型 Currency Pack，仅在月卡启用时可用，每周限购 1 次，以 1200 钻石兑换 10 个普通老荷兰；它不依赖 Event 日期，不产生 RMB，也不计入限时累充。
 
-## 个性化调整与资源总计约束
+## 个性化调整、资源总计与氪金总计约束
 
 - 用户可见的“个性化调整”是手动资源调整区，调整量允许正数、0 或负数；不得为调整建立结构化来源或修改资源 JSON，也不得影响 RMB 或限时累充。既有 `otherState` 等内部命名无需因此重构。
 - “个性化调整”中的限时、限定老荷兰视为用户已确认对当前目标有效，不再判断有效期或 `applicability`。
@@ -171,11 +183,11 @@
 - 库存、收入、人民币礼包、Currency Pack 或个性化调整变化后，资源总计必须即时反映当前状态。
 - 手动调整可能使最终汇总为负数，不得自动截断为 0。
 - `availablePulls` 必须基于应用 Currency Pack 与个性化调整后的最终资源总计计算：`diamond / 150 + common_paint + timed_paint + limited_paint`。`red_diamond` 不自动计入；`limited_paint` 只使用当前目标下实际可用的最终数量，计算结果不得擅自截断为 0。
-- RMB 总计和限时累充金额只受实际人民币购买项目影响；游戏内钻石、红钻消费不得计入 RMB。
+- 资源总计与氪金总计必须保持独立：前者只展示最终资源和 `availablePulls`，后者展示整个方案的 RMB 总额及所选 Recharge Event 下符合时间与资格规则的限时累充金额。
 
 ## 页面信息架构约束
 
-- 用户界面只展示一个权威、实时的“资源总计”。
+- 用户界面分别展示权威、实时的“资源总计”和“氪金总计”，不得混合两者职责。
 - 内部可以保留多个计算阶段，但不得把中间阶段重复展示为多个完整资源总计。
 
 ## 技术原则

@@ -224,11 +224,6 @@ function calculateIncomeCards(
   const monthlyCardPurchaseAmountRmb = selections.monthlyCardSelected
     ? monthlyCardPurchaseCount * rules.monthlyCard.priceRmb
     : 0;
-  const monthlyCardLimitedRechargeRmb =
-    selections.monthlyCardSelected &&
-    rules.monthlyCard.countsTowardLimitedRecharge
-      ? monthlyCardPurchaseAmountRmb
-      : 0;
   const seasonalCardDailyDiamonds = selections.seasonalCardSelected
     ? incomeDays * rules.seasonalCard.dailyDiamonds
     : 0;
@@ -271,7 +266,6 @@ function calculateIncomeCards(
       dailyDiamonds: monthlyCardDailyDiamonds,
       purchaseDiamonds: monthlyCardPurchaseDiamonds,
       purchaseAmountRmb: monthlyCardPurchaseAmountRmb,
-      limitedRechargeRmb: monthlyCardLimitedRechargeRmb,
       countsTowardLimitedRecharge:
         rules.monthlyCard.countsTowardLimitedRecharge,
       totalDiamonds:
@@ -315,7 +309,13 @@ function addResourceAmounts(baseResources, adjustments = {}) {
   return resources;
 }
 
-function calculateEventIncome(targetDate, event, eventTypes) {
+function calculateEventIncome(
+  currentDate,
+  targetDate,
+  event,
+  eventTypes,
+) {
+  const currentTimestamp = parseCalendarDate(currentDate);
   const targetTimestamp = parseCalendarDate(targetDate);
   const startTimestamp = parseCalendarDate(event.startDate);
   const endTimestamp = parseCalendarDate(event.endDate);
@@ -323,8 +323,8 @@ function calculateEventIncome(targetDate, event, eventTypes) {
     (candidate) => candidate.id === event.type,
   );
 
-  if (targetTimestamp === null) {
-    return { valid: false, error: "目标日期格式无效。" };
+  if (currentTimestamp === null) {
+    return { valid: false, error: "当前日期格式无效。" };
   }
 
   if (startTimestamp === null || endTimestamp === null) {
@@ -335,17 +335,27 @@ function calculateEventIncome(targetDate, event, eventTypes) {
     return { valid: false, error: `活动“${event.name}”类型无效。` };
   }
 
+  const ineligibleResult = {
+    valid: true,
+    error: null,
+    eventId: event.id,
+    eventName: event.name,
+    status: event.status,
+    eligible: false,
+    phase: null,
+    resources: {},
+  };
+
+  if (currentTimestamp > endTimestamp) {
+    return ineligibleResult;
+  }
+
+  if (targetTimestamp === null) {
+    return { valid: false, error: "目标日期格式无效。" };
+  }
+
   if (targetTimestamp < startTimestamp) {
-    return {
-      valid: true,
-      error: null,
-      eventId: event.id,
-      eventName: event.name,
-      status: event.status,
-      eligible: false,
-      phase: null,
-      resources: {},
-    };
+    return ineligibleResult;
   }
 
   const phase = targetTimestamp < endTimestamp
@@ -375,6 +385,7 @@ function getDefaultSelectedEventIds(events) {
 
 function calculateSelectedEventIncome(
   targetMode,
+  currentDate,
   targetDate,
   events,
   eventTypes,
@@ -395,7 +406,12 @@ function calculateSelectedEventIncome(
   let selectedResources = {};
 
   for (const event of events) {
-    const result = calculateEventIncome(targetDate, event, eventTypes);
+    const result = calculateEventIncome(
+      currentDate,
+      targetDate,
+      event,
+      eventTypes,
+    );
 
     if (!result.valid) {
       return result;
@@ -439,12 +455,21 @@ function calculatePackValue(
     return { valid: false, error: "红钻理论折算率必须大于 0。" };
   }
 
-  const contents = Array.isArray(pack.contents)
+  const immediateContents = Array.isArray(pack.contents)
     ? pack.contents
     : Object.entries(pack.contents).map(([resourceId, amount]) => ({
         resourceId,
         amount,
       }));
+  const deferredContents = (pack.deferredRewards ?? []).flatMap((reward) =>
+    reward.type === "relative_daily" && Array.isArray(reward.contents)
+      ? reward.contents.map(({ resourceId, amount }) => ({
+          resourceId,
+          amount: amount * reward.days,
+        }))
+      : [],
+  );
+  const contents = [...immediateContents, ...deferredContents];
   const resourceInstancesById = new Map(
     resourceInstances.map((resource) => [resource.id, resource]),
   );
@@ -911,7 +936,6 @@ function calculateEventPackPurchaseSummary(
   const resources = {};
   const normalizedState = {};
   let totalPrice = 0;
-  let limitedRechargePrice = 0;
 
   eventPacks.forEach((eventPack) => {
     const purchases = normalizeEventPackPurchases(
@@ -932,22 +956,401 @@ function calculateEventPackPurchaseSummary(
       const purchasePrice = pack.price * quantity;
       totalPrice += purchasePrice;
 
-      if (pack.countsTowardLimitedRecharge) {
-        limitedRechargePrice += purchasePrice;
-      }
-
       pack.contents.forEach(({ resourceId, amount }) => {
         resources[resourceId] =
           (resources[resourceId] ?? 0) + amount * quantity;
       });
+
+      const deferredSummary = calculateEventPackDeferredRewards(
+        eventPack,
+        pack,
+        quantity,
+        currentDate,
+        targetDate,
+      );
+
+      Object.entries(deferredSummary.resources).forEach(
+        ([resourceId, amount]) => {
+          resources[resourceId] = (resources[resourceId] ?? 0) + amount;
+        },
+      );
     });
   });
 
   return {
     totalPrice,
-    limitedRechargePrice,
     resources,
     purchaseState: normalizedState,
+  };
+}
+
+function calculateEventPackDeferredRewards(
+  eventPack,
+  pack,
+  quantity,
+  currentDate,
+  targetDate,
+) {
+  const resources = {};
+  const targetTimestamp = parseCalendarDate(targetDate);
+  const intersection = calculateInclusiveDateIntersection([
+    { startDate: currentDate, endDate: targetDate },
+    eventPack,
+  ]);
+
+  if (
+    !intersection.valid ||
+    intersection.days === 0 ||
+    targetTimestamp === null ||
+    !Number.isSafeInteger(quantity) ||
+    quantity <= 0
+  ) {
+    return {
+      assumedPurchaseDate: null,
+      deliveredOccurrences: 0,
+      resources,
+    };
+  }
+
+  const assumedPurchaseTimestamp = intersection.firstTimestamp;
+  let deliveredOccurrences = 0;
+
+  (pack.deferredRewards ?? []).forEach((reward) => {
+    if (reward.type !== "relative_daily") {
+      return;
+    }
+
+    for (let index = 0; index < reward.days; index += 1) {
+      const rewardTimestamp =
+        assumedPurchaseTimestamp +
+        (reward.startOffsetDays + reward.intervalDays * index) *
+          MILLISECONDS_PER_DAY;
+
+      if (rewardTimestamp > targetTimestamp) {
+        continue;
+      }
+
+      deliveredOccurrences += 1;
+      reward.contents.forEach(({ resourceId, amount }) => {
+        resources[resourceId] =
+          (resources[resourceId] ?? 0) + amount * quantity;
+      });
+    }
+  });
+
+  return {
+    assumedPurchaseDate: new Date(assumedPurchaseTimestamp)
+      .toISOString()
+      .slice(0, 10),
+    deliveredOccurrences,
+    resources,
+  };
+}
+
+function calculateInclusiveDateIntersection(ranges) {
+  let firstTimestamp = Number.NEGATIVE_INFINITY;
+  let lastTimestamp = Number.POSITIVE_INFINITY;
+
+  for (const range of ranges) {
+    const startTimestamp = parseCalendarDate(range?.startDate);
+    const endTimestamp = parseCalendarDate(range?.endDate);
+
+    if (
+      startTimestamp === null ||
+      endTimestamp === null ||
+      startTimestamp > endTimestamp
+    ) {
+      return {
+        valid: false,
+        days: 0,
+        firstTimestamp: null,
+        lastTimestamp: null,
+        error: "日期区间无效。",
+      };
+    }
+
+    firstTimestamp = Math.max(firstTimestamp, startTimestamp);
+    lastTimestamp = Math.min(lastTimestamp, endTimestamp);
+  }
+
+  const days = firstTimestamp > lastTimestamp
+    ? 0
+    : (lastTimestamp - firstTimestamp) / MILLISECONDS_PER_DAY + 1;
+
+  return {
+    valid: true,
+    days,
+    firstTimestamp,
+    lastTimestamp,
+    error: null,
+  };
+}
+
+function getIntersectingRechargeEvents(
+  rechargeEvents,
+  currentDate,
+  targetDate,
+) {
+  const mainRange = { startDate: currentDate, endDate: targetDate };
+  const mainRangeResult = calculateInclusiveDateIntersection([mainRange]);
+
+  if (!mainRangeResult.valid) {
+    return { valid: false, error: mainRangeResult.error, events: [] };
+  }
+
+  const events = rechargeEvents.filter((rechargeEvent) => {
+    const intersection = calculateInclusiveDateIntersection([
+      mainRange,
+      rechargeEvent,
+    ]);
+    return intersection.valid && intersection.days > 0;
+  });
+
+  return {
+    valid: true,
+    error: null,
+    events: [...events].sort((firstEvent, secondEvent) =>
+      firstEvent.startDate.localeCompare(secondEvent.startDate),
+    ),
+  };
+}
+
+function calculateEventPackLimitedRechargeRmb(
+  eventPacks,
+  purchaseState,
+  currentDate,
+  targetDate,
+  rechargeEvent,
+) {
+  if (!rechargeEvent) {
+    return { valid: true, error: null, amount: 0 };
+  }
+
+  let amount = 0;
+  const mainRange = { startDate: currentDate, endDate: targetDate };
+
+  for (const eventPack of eventPacks) {
+    const rechargeIntersection = calculateInclusiveDateIntersection([
+      eventPack,
+      rechargeEvent,
+    ]);
+
+    if (!rechargeIntersection.valid) {
+      return { valid: false, error: rechargeIntersection.error, amount: 0 };
+    }
+
+    if (rechargeIntersection.days === 0) {
+      continue;
+    }
+
+    for (const pack of eventPack.packs) {
+      const purchase = purchaseState?.[eventPack.id]?.[pack.id];
+      const quantity = purchase?.selected ? purchase.quantity : 0;
+
+      if (
+        !Number.isSafeInteger(quantity) ||
+        quantity < 0 ||
+        typeof pack.price !== "number" ||
+        !Number.isFinite(pack.price) ||
+        pack.price < 0
+      ) {
+        return { valid: false, error: "活动礼包购买金额无效。", amount: 0 };
+      }
+
+      if (quantity === 0 || !pack.countsTowardLimitedRecharge) {
+        continue;
+      }
+
+      let eligibleQuantity = quantity;
+
+      if (pack.purchaseRule.type === "daily") {
+        const dailyIntersection = calculateInclusiveDateIntersection([
+          mainRange,
+          eventPack,
+          rechargeEvent,
+        ]);
+
+        if (!dailyIntersection.valid) {
+          return {
+            valid: false,
+            error: dailyIntersection.error,
+            amount: 0,
+          };
+        }
+
+        eligibleQuantity = Math.min(
+          quantity,
+          dailyIntersection.days * pack.purchaseRule.limit,
+        );
+      }
+
+      amount += pack.price * eligibleQuantity;
+    }
+  }
+
+  return { valid: true, error: null, amount };
+}
+
+function calculateMonthlyCardRechargeEligibility({
+  currentDate,
+  targetDate,
+  rechargeEvent,
+  monthlyCard,
+  todayIncomeClaimed = true,
+  durationDays = 30,
+} = {}) {
+  if (!rechargeEvent || !monthlyCard?.selected) {
+    return {
+      valid: true,
+      error: null,
+      eligibleRequiredPurchases: 0,
+      extraPurchases: 0,
+      maximumQuantity: 0,
+      requiredPurchaseDeadlines: [],
+    };
+  }
+
+  if (
+    !Number.isSafeInteger(monthlyCard.existingCoveredDays) ||
+    monthlyCard.existingCoveredDays < 0 ||
+    !Number.isSafeInteger(monthlyCard.requiredPurchases) ||
+    monthlyCard.requiredPurchases < 0 ||
+    !Number.isSafeInteger(monthlyCard.extraPurchases) ||
+    monthlyCard.extraPurchases < 0 ||
+    !Number.isSafeInteger(durationDays) ||
+    durationDays <= 0
+  ) {
+    return { valid: false, error: "月卡购买数据无效。" };
+  }
+
+  const mainRange = { startDate: currentDate, endDate: targetDate };
+  const intersection = calculateInclusiveDateIntersection([
+    mainRange,
+    rechargeEvent,
+  ]);
+
+  if (!intersection.valid) {
+    return { valid: false, error: intersection.error };
+  }
+
+  if (
+    intersection.days === 0 ||
+    monthlyCard.countsTowardLimitedRecharge === false
+  ) {
+    return {
+      valid: true,
+      error: null,
+      eligibleRequiredPurchases: 0,
+      extraPurchases: 0,
+      maximumQuantity: 0,
+      requiredPurchaseDeadlines: [],
+    };
+  }
+
+  const currentTimestamp = parseCalendarDate(currentDate);
+  const firstIncomeTimestamp =
+    currentTimestamp +
+    (todayIncomeClaimed ? MILLISECONDS_PER_DAY : 0);
+  const firstRequiredDeadline =
+    firstIncomeTimestamp +
+    monthlyCard.existingCoveredDays * MILLISECONDS_PER_DAY;
+  const requiredPurchaseDeadlines = Array.from(
+    { length: monthlyCard.requiredPurchases },
+    (_, index) =>
+      firstRequiredDeadline +
+      index * durationDays * MILLISECONDS_PER_DAY,
+  );
+  const eligibleRequiredPurchases = requiredPurchaseDeadlines.filter(
+    (deadline) => deadline >= intersection.firstTimestamp,
+  ).length;
+
+  return {
+    valid: true,
+    error: null,
+    eligibleRequiredPurchases,
+    extraPurchases: monthlyCard.extraPurchases,
+    maximumQuantity:
+      eligibleRequiredPurchases + monthlyCard.extraPurchases,
+    requiredPurchaseDeadlines,
+  };
+}
+
+function calculateLimitedRechargeSummary({
+  rechargeEvent = null,
+  currentDate = "",
+  targetDate = "",
+  permanentPackPurchases = [],
+  eventPacks = [],
+  eventPackPurchaseState = {},
+  monthlyCardRechargeQuantity = 0,
+  monthlyCardRechargeMaximum = 0,
+  monthlyCardPrice = 0,
+  monthlyCardCountsTowardLimitedRecharge = true,
+} = {}) {
+  if (!rechargeEvent) {
+    return {
+      valid: true,
+      error: null,
+      permanentPackRmb: 0,
+      eventPackRmb: 0,
+      monthlyCardRmb: 0,
+      limitedRechargeRmb: 0,
+    };
+  }
+
+  if (
+    !Number.isSafeInteger(monthlyCardRechargeQuantity) ||
+    monthlyCardRechargeQuantity < 0 ||
+    !Number.isSafeInteger(monthlyCardRechargeMaximum) ||
+    monthlyCardRechargeMaximum < 0 ||
+    monthlyCardRechargeQuantity > monthlyCardRechargeMaximum ||
+    typeof monthlyCardPrice !== "number" ||
+    !Number.isFinite(monthlyCardPrice) ||
+    monthlyCardPrice < 0
+  ) {
+    return { valid: false, error: "月卡计入限时累充数量无效。" };
+  }
+
+  let permanentPackRmb = 0;
+
+  for (const purchase of permanentPackPurchases) {
+    if (
+      typeof purchase.price !== "number" ||
+      !Number.isFinite(purchase.price) ||
+      purchase.price < 0
+    ) {
+      return { valid: false, error: "常驻礼包购买金额无效。" };
+    }
+
+    if (purchase.countsTowardLimitedRecharge) {
+      permanentPackRmb += purchase.price;
+    }
+  }
+
+  const eventPackResult = calculateEventPackLimitedRechargeRmb(
+    eventPacks,
+    eventPackPurchaseState,
+    currentDate,
+    targetDate,
+    rechargeEvent,
+  );
+
+  if (!eventPackResult.valid) {
+    return eventPackResult;
+  }
+
+  const monthlyCardRmb = monthlyCardCountsTowardLimitedRecharge
+    ? monthlyCardRechargeQuantity * monthlyCardPrice
+    : 0;
+
+  return {
+    valid: true,
+    error: null,
+    permanentPackRmb,
+    eventPackRmb: eventPackResult.amount,
+    monthlyCardRmb,
+    limitedRechargeRmb:
+      permanentPackRmb + eventPackResult.amount + monthlyCardRmb,
   };
 }
 
@@ -1071,7 +1474,6 @@ function calculatePreConversionSummary({
   }
 
   let rmbTotal = 0;
-  let limitedRechargeRmb = 0;
 
   for (const payment of paymentSources) {
     const amount = payment?.amount ?? 0;
@@ -1085,23 +1487,6 @@ function calculatePreConversionSummary({
     }
 
     rmbTotal += amount;
-
-    if (payment.limitedRechargeAmount !== undefined) {
-      const limitedRechargeAmount = payment.limitedRechargeAmount;
-
-      if (
-        typeof limitedRechargeAmount !== "number" ||
-        !Number.isFinite(limitedRechargeAmount) ||
-        limitedRechargeAmount < 0 ||
-        limitedRechargeAmount > amount
-      ) {
-        return { valid: false, error: "限时累充金额无效。" };
-      }
-
-      limitedRechargeRmb += limitedRechargeAmount;
-    } else if (payment.countsTowardLimitedRecharge !== false) {
-      limitedRechargeRmb += amount;
-    }
   }
 
   return {
@@ -1109,7 +1494,6 @@ function calculatePreConversionSummary({
     error: null,
     resources,
     rmbTotal,
-    limitedRechargeRmb,
   };
 }
 

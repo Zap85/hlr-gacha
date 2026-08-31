@@ -1,9 +1,23 @@
 [
   {
+    "id": "司岚生日",
+    "name": "司岚生日",
+    "startDate": "2026-10-13",
+    "endDate": "2026-10-22",
+    "tags": ["birthday"]
+  },
+  {
     "id": "六周年庆典",
-    "name": "6周年庆典",
+    "name": "六周年庆典",
     "startDate": "2026-09-26",
     "endDate": "2026-10-12",
+    "tags": []
+  },
+  {
+    "id": "怪谈活动",
+    "name": "怪谈活动",
+    "startDate": "2026-09-03",
+    "endDate": "2026-09-09",
     "tags": []
   },
   {
@@ -18,20 +32,23 @@
     "name": "罗夏生日",
     "startDate": "2026-08-01",
     "endDate": "2026-08-09",
-    "tags": ["birthday"]
+    "tags": ["birthday"],
+    "archive": true
   },
   {
     "id": "下一站世界与你",
     "name": "下一站世界与你",
     "startDate": "2026-07-16",
     "endDate": "2026-07-31",
-    "tags": []
+    "tags": [],
+    "archive": true
   },
   {
     "id": "风蚀之歌",
     "name": "风蚀之歌",
     "startDate": "2026-04-30",
     "endDate": "2026-05-15",
-    "tags": []
+    "tags": [],
+    "archive": true
   }
 ]

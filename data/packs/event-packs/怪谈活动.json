@@ -1,0 +1,286 @@
+{
+  "id": "怪谈活动",
+  "name": "怪谈活动",
+  "eventId": "怪谈活动",
+  "startDate": "2026-09-03",
+  "endDate": "2026-09-09",
+  "packs": [
+    {
+      "id": "怪谈出行",
+      "name": "怪谈出行",
+      "price": 68,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [],
+      "otherContents": [
+        { "name": "怪谈出行", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈出行地点",
+      "name": "怪谈出行地点",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [],
+      "otherContents": [
+        { "name": "怪谈出行地点", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈1元礼包",
+      "name": "怪谈1元礼包",
+      "price": 1,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "diamond", "amount": 100 }
+      ],
+      "otherContents": [
+        { "name": "香浓拿铁", "amount": 1 },
+        { "name": "星尘之铃·承", "amount": 5 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈3元礼包",
+      "name": "怪谈3元礼包",
+      "price": 3,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "timed-paint-怪谈活动", "amount": 1 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈大型颜料箱",
+      "name": "怪谈大型颜料箱",
+      "price": 328,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 2 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 36 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈点触礼盒",
+      "name": "怪谈点触礼盒",
+      "price": 25,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 5 }
+      ],
+      "otherContents": [
+        { "name": "点击特效·幻呓", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈服装组合包",
+      "name": "怪谈服装组合包",
+      "price": 98,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 5 }
+      ],
+      "otherContents": [
+        { "name": "怪谈出行", "amount": 1 },
+        { "name": "出行地点", "amount": 1 },
+        { "name": "点击特效", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈画材大礼包",
+      "name": "怪谈画材大礼包",
+      "price": 68,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 10 },
+        { "resourceId": "diamond", "amount": 68 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈每日好感包",
+      "name": "怪谈每日好感包",
+      "price": 6,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "daily", "limit": 1 },
+      "contents": [
+        { "resourceId": "diamond", "amount": 120 }
+      ],
+      "otherContents": [
+        { "name": "好感礼盒", "amount": 30 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈特殊颜料盒",
+      "name": "怪谈特殊颜料盒",
+      "price": 198,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 2 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 28 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈像素盒",
+      "name": "怪谈像素盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "timed-paint-怪谈活动", "amount": 8 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈颜料套装",
+      "name": "怪谈颜料套装",
+      "price": 45,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 4 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 6 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈专属颜料箱I",
+      "name": "怪谈专属颜料箱I",
+      "price": 88,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 15 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈专属颜料箱II",
+      "name": "怪谈专属颜料箱II",
+      "price": 128,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 25 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈特别幸运包",
+      "name": "怪谈特别幸运包",
+      "price": 12,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 2 }
+      ],
+      "otherContents": [
+        { "name": "幸运魔法盒子", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "怪谈特惠连续包",
+      "name": "怪谈特惠连续包",
+      "price": 28,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "diamond", "amount": 280 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": [
+        {
+          "type": "relative_daily",
+          "startOffsetDays": 1,
+          "days": 5,
+          "intervalDays": 1,
+          "contents": [
+            { "resourceId": "common_paint", "amount": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "怪谈月卡特惠盒",
+      "name": "怪谈月卡特惠盒",
+      "price": 30,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [
+        { "resourceId": "common_paint", "amount": 6 }
+      ],
+      "otherContents": [],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "咖啡外送订单",
+      "name": "咖啡外送订单",
+      "price": 3,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "daily", "limit": 1 },
+      "contents": [],
+      "otherContents": [
+        { "name": "冰美式", "amount": 3 },
+        { "name": "金币", "amount": 5000 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    }
+  ]
+}

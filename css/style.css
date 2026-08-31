@@ -306,6 +306,32 @@ fieldset {
   margin: 0.25rem 0 0;
 }
 
+.recharge-summary-fields {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.recharge-summary-fields > label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.recharge-summary-fields > [hidden] {
+  display: none;
+}
+
+.recharge-quantity-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recharge-quantity-control input {
+  min-width: 0;
+  flex: 1;
+}
+
 .income-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

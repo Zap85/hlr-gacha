@@ -10,19 +10,22 @@ const dataLoaderSource = fs.readFileSync(
   "utf8",
 );
 const activeDataPaths = [
-  "data/banners/test-banner.json",
+  "data/banners/banners.json",
   "data/events/event-types.json",
-  "data/events/test-event.json",
+  "data/events/events.json",
+  "data/recharge-events/recharge-events.json",
   "data/packs/permanent-packs.json",
   "data/packs/event-packs/庄园诡戏.json",
+  "data/packs/event-packs/怪谈活动.json",
   "data/packs/currency-packs/庄园诡戏.json",
   "data/resources/resource-types.json",
-  "data/resources/test-resources.json",
+  "data/resources/resources.json",
   "data/constants.json",
 ];
 const templatePaths = [
   "data/banners/banner.template.json",
   "data/events/event.template.json",
+  "data/recharge-events/recharge-event.template.json",
   "data/packs/event-packs/event-pack.template.json",
   "data/packs/currency-packs/currency-pack.template.json",
   "data/resources/resource.template.json",

@@ -18,10 +18,10 @@ const resourceTypeData = JSON.parse(
   readProjectFile(path.join("data", "resources", "resource-types.json")),
 );
 const resourceInstanceData = JSON.parse(
-  readProjectFile(path.join("data", "resources", "test-resources.json")),
+  readProjectFile(path.join("data", "resources", "resources.json")),
 );
 const eventData = JSON.parse(
-  readProjectFile(path.join("data", "events", "test-event.json")),
+  readProjectFile(path.join("data", "events", "events.json")),
 );
 const constantsData = JSON.parse(
   readProjectFile(path.join("data", "constants.json")),
@@ -831,7 +831,7 @@ loaderContext.fetch = async (requestedPath) => {
   requestedPaths.push(requestedPath);
   const dataByPath = {
     "data/resources/resource-types.json": resourceTypeData,
-    "data/resources/test-resources.json": resourceInstanceData,
+    "data/resources/resources.json": resourceInstanceData,
     "data/packs/currency-packs/庄园诡戏.json": currencyPackData,
   };
 

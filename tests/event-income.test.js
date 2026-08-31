@@ -13,7 +13,7 @@ const eventTypeData = JSON.parse(
   readProjectFile(path.join("data", "events", "event-types.json")),
 );
 const eventData = JSON.parse(
-  readProjectFile(path.join("data", "events", "test-event.json")),
+  readProjectFile(path.join("data", "events", "events.json")),
 );
 const eventTypes = eventTypeData.eventTypes;
 const events = eventData.events;
@@ -39,14 +39,18 @@ const getDefaultSelectedEventIds = vm.runInContext(
 
 const eventTypeIds = new Set(eventTypes.map((eventType) => eventType.id));
 assert.equal(events.every((event) => eventTypeIds.has(event.type)), true);
-assert.equal(events.every((event) => event.status === "current"), true);
+assert.equal(
+  events.every((event) => ["current", "future"].includes(event.status)),
+  true,
+);
 assert.equal(eventTypes.length, 2);
-assert.equal(events.length, 2);
+assert.equal(events.length, 3);
 
 const rerunEvent = events.find((event) => event.id === "庄园诡戏");
 const soloEvent = events.find((event) => event.id === "怪谈：电子");
 
 const beforeStart = calculateEventIncome(
+  "2026-08-01",
   "2026-08-25",
   rerunEvent,
   eventTypes,
@@ -56,6 +60,7 @@ assert.equal(beforeStart.eligible, false);
 assert.equal(Object.keys(beforeStart.resources).length, 0);
 
 const availableAtStart = calculateEventIncome(
+  "2026-08-01",
   "2026-08-26",
   rerunEvent,
   eventTypes,
@@ -66,6 +71,7 @@ assert.equal(availableAtStart.resources.diamond, 50);
 assert.equal(availableAtStart.resources.common_paint, 3);
 
 const completeAtEnd = calculateEventIncome(
+  "2026-08-01",
   "2026-09-02",
   rerunEvent,
   eventTypes,
@@ -95,6 +101,7 @@ const adjustedEvent = {
   ],
 };
 const adjustedAvailable = calculateEventIncome(
+  "2026-08-27",
   "2026-08-30",
   adjustedEvent,
   eventTypes,
@@ -104,6 +111,7 @@ assert.equal(adjustedAvailable.resources.common_paint, 5);
 assert.equal(adjustedAvailable.resources.red_diamond, 10);
 
 const adjustedComplete = calculateEventIncome(
+  "2026-08-01",
   "2026-09-03",
   adjustedEvent,
   eventTypes,
@@ -113,11 +121,13 @@ assert.equal(adjustedComplete.resources.common_paint, 2);
 assert.equal(Object.keys(adjustedComplete.resources).length, 2);
 
 const soloAvailable = calculateEventIncome(
+  "2026-08-01",
   "2026-08-15",
   soloEvent,
   eventTypes,
 );
 const soloComplete = calculateEventIncome(
+  "2026-08-01",
   "2026-08-16",
   soloEvent,
   eventTypes,
@@ -127,8 +137,63 @@ assert.equal(soloAvailable.resources.diamond, 40);
 assert.equal(soloComplete.phase, "complete");
 assert.equal(soloComplete.resources.diamond, 360);
 
+const eventDateScenarios = [
+  {
+    currentDate: "2026-08-30",
+    targetDate: "2026-08-26",
+    eligible: true,
+    phase: "available",
+  },
+  {
+    currentDate: "2026-08-30",
+    targetDate: "2026-09-01",
+    eligible: true,
+    phase: "available",
+  },
+  {
+    currentDate: "2026-08-30",
+    targetDate: "2026-09-02",
+    eligible: true,
+    phase: "complete",
+  },
+  {
+    currentDate: "2026-08-30",
+    targetDate: "2026-10-01",
+    eligible: true,
+    phase: "complete",
+  },
+  {
+    currentDate: "2026-09-03",
+    targetDate: "2026-10-01",
+    eligible: false,
+    phase: null,
+  },
+  {
+    currentDate: "2026-08-01",
+    targetDate: "2026-08-20",
+    eligible: false,
+    phase: null,
+  },
+];
+
+eventDateScenarios.forEach((scenario) => {
+  const result = calculateEventIncome(
+    scenario.currentDate,
+    scenario.targetDate,
+    rerunEvent,
+    eventTypes,
+  );
+
+  assert.equal(result.valid, true);
+  assert.equal(result.eligible, scenario.eligible);
+  assert.equal(result.phase, scenario.phase);
+});
+
 const defaultSelectedIds = Array.from(getDefaultSelectedEventIds(events));
-assert.deepEqual(defaultSelectedIds, ["怪谈：电子"]);
+assert.deepEqual(defaultSelectedIds, [
+  "怪谈：电子",
+  "怪谈活动",
+]);
 
 const futureTestEvent = {
   ...soloEvent,
@@ -139,6 +204,7 @@ const futureTestEvent = {
   endDate: "2026-09-10",
 };
 const futureIncome = calculateEventIncome(
+  "2026-08-01",
   "2026-09-05",
   futureTestEvent,
   eventTypes,
@@ -148,22 +214,24 @@ assert.equal(futureIncome.status, "future");
 assert.equal(futureIncome.resources.diamond, 40);
 assert.deepEqual(
   Array.from(getDefaultSelectedEventIds([...events, futureTestEvent])),
-  ["怪谈：电子", "sample-future-event"],
+  ["怪谈：电子", "怪谈活动", "sample-future-event"],
 );
 
 const onlyDefaultSelected = calculateSelectedEventIncome(
   "banner",
+  "2026-08-01",
   "2026-09-26",
   events,
   eventTypes,
   defaultSelectedIds,
 );
 assert.equal(onlyDefaultSelected.enabled, true);
-assert.equal(onlyDefaultSelected.selectedResources.diamond, 360);
+assert.equal(onlyDefaultSelected.selectedResources.diamond, 720);
 assert.equal(onlyDefaultSelected.selectedResources.common_paint, undefined);
 
 const bothSelected = calculateSelectedEventIncome(
   "banner",
+  "2026-08-01",
   "2026-09-26",
   events,
   eventTypes,
@@ -174,6 +242,7 @@ assert.equal(bothSelected.selectedResources.common_paint, 3);
 
 const noneSelected = calculateSelectedEventIncome(
   "banner",
+  "2026-08-01",
   "2026-09-26",
   events,
   eventTypes,
@@ -183,6 +252,7 @@ assert.equal(Object.keys(noneSelected.selectedResources).length, 0);
 
 const customDateMode = calculateSelectedEventIncome(
   "custom",
+  "2026-08-01",
   "2026-09-26",
   events,
   eventTypes,
@@ -252,12 +322,12 @@ assert.equal(getEventIncomeLabel("future"), "预计可计入");
   );
   assert.deepEqual(
     Array.from(loadedEvents, (event) => event.id),
-    ["庄园诡戏", "怪谈：电子"],
+    ["庄园诡戏", "怪谈：电子", "怪谈活动"],
   );
   assert.equal(loadedEvents.every((event) => Array.isArray(event.exchanges)), true);
   assert.deepEqual(requestedPaths, [
     "data/events/event-types.json",
-    "data/events/test-event.json",
+    "data/events/events.json",
   ]);
   console.log("event income: data and calculation tests passed");
 })().catch((error) => {

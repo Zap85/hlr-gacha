@@ -54,7 +54,6 @@ assert.equal(defaults.monthlyCard.dailyDiamonds, 0);
 assert.equal(defaults.monthlyCard.purchaseDiamonds, 0);
 assert.equal(defaults.monthlyCard.totalDiamonds, 0);
 assert.equal(defaults.monthlyCard.purchaseAmountRmb, 0);
-assert.equal(defaults.monthlyCard.limitedRechargeRmb, 0);
 assert.equal(defaults.monthlyCard.countsTowardLimitedRecharge, true);
 assert.equal(defaults.seasonalCard.totalDiamonds, 0);
 assert.equal(defaults.annualCard.commonPaint, 0);
@@ -194,7 +193,6 @@ assert.equal(extraPurchases.monthlyCard.extraPurchases, 2);
 assert.equal(extraPurchases.monthlyCard.purchaseCount, 2);
 assert.equal(extraPurchases.monthlyCard.purchaseDiamonds, 600);
 assert.equal(extraPurchases.monthlyCard.purchaseAmountRmb, 60);
-assert.equal(extraPurchases.monthlyCard.limitedRechargeRmb, 60);
 
 const unselectedExtraPurchases = calculateIncomeCards(
   "2026-07-01",

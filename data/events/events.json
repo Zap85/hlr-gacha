@@ -27,6 +27,20 @@
         "complete": {}
       },
       "exchanges": []
+    },
+    {
+      "id": "怪谈活动",
+      "name": "怪谈活动",
+      "type": "单人活动",
+      "startDate": "2026-09-03",
+      "endDate": "2026-09-09",
+      "status": "future",
+      "isRerun": false,
+      "incomeAdjustment": {
+        "available": {},
+        "complete": {}
+      },
+      "exchanges": []
     }
   ]
 }

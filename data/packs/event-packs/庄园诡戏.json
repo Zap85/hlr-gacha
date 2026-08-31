@@ -270,6 +270,34 @@
       "prerequisites": [],
       "trigger": null,
       "deferredRewards": []
+    },
+    {
+      "id": "庄园服装礼包",
+      "name": "庄园服装礼包",
+      "price": 78,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 5 },
+      "contents": [],
+      "otherContents": [
+        { "name": "对应男主庄园服装", "amount": 1 }
+      ],
+      "prerequisites": [],
+      "trigger": null,
+      "deferredRewards": []
+    },
+    {
+      "id": "出行地点·闪亮剧场",
+      "name": "出行地点·闪亮剧场",
+      "price": 10,
+      "countsTowardLimitedRecharge": true,
+      "purchaseRule": { "type": "total", "limit": 1 },
+      "contents": [],
+      "otherContents": [
+        { "name": "出行地点·闪亮剧场", "amount": 1 }
+      ],
+      "prerequisites": ["庄园服装礼包"],
+      "trigger": null,
+      "deferredRewards": []
     }
   ]
 }

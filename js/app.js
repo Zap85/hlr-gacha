@@ -26,7 +26,7 @@ const dailyIncomeSettings = {
 const dailyIncomeState = {
   resources: {},
   rmbTotal: 0,
-  limitedRechargeRmb: 0,
+  monthlyCard: null,
 };
 let freeDailyAccumulationRules = null;
 let freeDailyAccumulationView = null;
@@ -59,7 +59,6 @@ const eventPackPurchaseState = {
   purchases: {},
   resources: {},
   totalPrice: 0,
-  limitedRechargePrice: 0,
 };
 let eventPackView = null;
 let eventPacks = [];
@@ -86,7 +85,6 @@ const preConversionSummaryState = {
     limited_paint: 0,
   },
   rmbTotal: 0,
-  limitedRechargeRmb: 0,
 };
 const currencyPackPurchaseState = {
   purchases: {},
@@ -101,6 +99,16 @@ let monthlyCardCurrencyPackConfig = null;
 let currencyPackResourceNames = new Map();
 let currencyPacksLoading = true;
 let currencyPacksLoadError = "";
+const rechargeSummaryState = {
+  selectedRechargeEventId: "",
+  monthlyCardQuantities: {},
+  monthlyCardQuantityTouched: {},
+  limitedRechargeRmb: 0,
+};
+let rechargeSummaryView = null;
+let rechargeEvents = [];
+let rechargeEventsLoading = true;
+let rechargeEventsLoadError = "";
 
 function initializeFixedInventoryState(resourceTypes) {
   inventoryState.fixedResources = {};
@@ -254,6 +262,174 @@ function renderFinalResourceTotals() {
   renderCurrentResourceTotals(result.resources);
 }
 
+function formatRechargeEventOptionLabel(rechargeEvent) {
+  return `${rechargeEvent.name} ${rechargeEvent.startDate} ～ ${rechargeEvent.endDate}`;
+}
+
+function updateRechargeSummaryResult() {
+  if (!rechargeSummaryView) {
+    return;
+  }
+
+  rechargeSummaryView.rmbTotal.textContent =
+    `¥${preConversionSummaryState.rmbTotal}`;
+  rechargeSummaryView.error.textContent = "";
+
+  if (rechargeEventsLoading) {
+    rechargeSummaryView.eventField.hidden = true;
+    rechargeSummaryView.eventMessage.hidden = false;
+    rechargeSummaryView.eventMessage.textContent =
+      "正在加载限时累充数据。";
+    rechargeSummaryView.monthlyCardField.hidden = true;
+    rechargeSummaryView.limitedRechargeRmb.textContent = "¥0";
+    rechargeSummaryState.limitedRechargeRmb = 0;
+    return;
+  }
+
+  if (rechargeEventsLoadError) {
+    rechargeSummaryView.eventField.hidden = true;
+    rechargeSummaryView.eventMessage.hidden = false;
+    rechargeSummaryView.eventMessage.textContent = "";
+    rechargeSummaryView.monthlyCardField.hidden = true;
+    rechargeSummaryView.limitedRechargeRmb.textContent = "¥0";
+    rechargeSummaryView.error.textContent = rechargeEventsLoadError;
+    rechargeSummaryState.limitedRechargeRmb = 0;
+    return;
+  }
+
+  const availableResult = getIntersectingRechargeEvents(
+    rechargeEvents,
+    dateSelectionState.currentDate,
+    dateSelectionState.targetDate,
+  );
+
+  if (!availableResult.valid) {
+    rechargeSummaryView.eventField.hidden = true;
+    rechargeSummaryView.eventMessage.hidden = true;
+    rechargeSummaryView.monthlyCardField.hidden = true;
+    rechargeSummaryView.limitedRechargeRmb.textContent = "¥0";
+    rechargeSummaryView.error.textContent = availableResult.error;
+    rechargeSummaryState.limitedRechargeRmb = 0;
+    return;
+  }
+
+  if (availableResult.events.length === 0) {
+    rechargeSummaryState.selectedRechargeEventId = "";
+    rechargeSummaryView.eventSelect.replaceChildren();
+    rechargeSummaryView.eventField.hidden = true;
+    rechargeSummaryView.eventMessage.hidden = false;
+    rechargeSummaryView.eventMessage.textContent =
+      "当前计算区间内没有限时累充";
+    rechargeSummaryView.monthlyCardField.hidden = true;
+    rechargeSummaryView.limitedRechargeRmb.textContent = "¥0";
+    rechargeSummaryState.limitedRechargeRmb = 0;
+    return;
+  }
+
+  const availableIds = new Set(
+    availableResult.events.map((rechargeEvent) => rechargeEvent.id),
+  );
+
+  if (
+    !availableIds.has(rechargeSummaryState.selectedRechargeEventId)
+  ) {
+    rechargeSummaryState.selectedRechargeEventId =
+      availableResult.events[0].id;
+  }
+
+  rechargeSummaryView.eventSelect.replaceChildren();
+  availableResult.events.forEach((rechargeEvent) => {
+    const option = document.createElement("option");
+    option.value = rechargeEvent.id;
+    option.textContent = formatRechargeEventOptionLabel(rechargeEvent);
+    rechargeSummaryView.eventSelect.append(option);
+  });
+  rechargeSummaryView.eventSelect.value =
+    rechargeSummaryState.selectedRechargeEventId;
+  rechargeSummaryView.eventField.hidden = false;
+  rechargeSummaryView.eventMessage.hidden = true;
+
+  const selectedRechargeEvent = availableResult.events.find(
+    (rechargeEvent) =>
+      rechargeEvent.id ===
+      rechargeSummaryState.selectedRechargeEventId,
+  );
+  const monthlyCardEligibility =
+    calculateMonthlyCardRechargeEligibility({
+      currentDate: dateSelectionState.currentDate,
+      targetDate: dateSelectionState.targetDate,
+      rechargeEvent: selectedRechargeEvent,
+      monthlyCard: dailyIncomeState.monthlyCard,
+      todayIncomeClaimed: dailyIncomeSettings.todayIncomeClaimed,
+      durationDays: incomeCardRules?.monthlyCard.durationDays ?? 30,
+    });
+
+  if (!monthlyCardEligibility.valid) {
+    rechargeSummaryView.monthlyCardField.hidden = true;
+    rechargeSummaryView.limitedRechargeRmb.textContent = "¥0";
+    rechargeSummaryView.error.textContent = monthlyCardEligibility.error;
+    rechargeSummaryState.limitedRechargeRmb = 0;
+    return;
+  }
+
+  const monthlyCard = dailyIncomeState.monthlyCard;
+  const showMonthlyCardInput =
+    monthlyCard?.selected && monthlyCard.purchaseCount > 0;
+  let monthlyCardQuantity = 0;
+
+  if (showMonthlyCardInput) {
+    const rechargeEventId = selectedRechargeEvent.id;
+    const quantityWasTouched =
+      rechargeSummaryState.monthlyCardQuantityTouched[
+        rechargeEventId
+      ] === true;
+    const savedQuantity = quantityWasTouched
+      ? rechargeSummaryState.monthlyCardQuantities[rechargeEventId] ?? 0
+      : monthlyCardEligibility.maximumQuantity;
+    monthlyCardQuantity = Math.min(
+      savedQuantity,
+      monthlyCardEligibility.maximumQuantity,
+    );
+    rechargeSummaryState.monthlyCardQuantities[rechargeEventId] =
+      monthlyCardQuantity;
+    rechargeSummaryView.monthlyCardQuantity.max =
+      String(monthlyCardEligibility.maximumQuantity);
+    rechargeSummaryView.monthlyCardQuantity.value =
+      String(monthlyCardQuantity);
+    rechargeSummaryView.monthlyCardMaximum.textContent =
+      `本期最多可计入 ${monthlyCardEligibility.maximumQuantity} 张`;
+  }
+
+  rechargeSummaryView.monthlyCardField.hidden = !showMonthlyCardInput;
+
+  const summary = calculateLimitedRechargeSummary({
+    rechargeEvent: selectedRechargeEvent,
+    currentDate: dateSelectionState.currentDate,
+    targetDate: dateSelectionState.targetDate,
+    permanentPackPurchases: permanentPackState.purchases,
+    eventPacks,
+    eventPackPurchaseState: eventPackPurchaseState.purchases,
+    monthlyCardRechargeQuantity: monthlyCardQuantity,
+    monthlyCardRechargeMaximum:
+      monthlyCardEligibility.maximumQuantity,
+    monthlyCardPrice: incomeCardRules?.monthlyCard.priceRmb ?? 0,
+    monthlyCardCountsTowardLimitedRecharge:
+      monthlyCard?.countsTowardLimitedRecharge ?? false,
+  });
+
+  if (!summary.valid) {
+    rechargeSummaryView.limitedRechargeRmb.textContent = "¥0";
+    rechargeSummaryView.error.textContent = summary.error;
+    rechargeSummaryState.limitedRechargeRmb = 0;
+    return;
+  }
+
+  rechargeSummaryState.limitedRechargeRmb =
+    summary.limitedRechargeRmb;
+  rechargeSummaryView.limitedRechargeRmb.textContent =
+    `¥${summary.limitedRechargeRmb}`;
+}
+
 function updatePreConversionSummaryResult() {
   if (!preConversionSummaryView) {
     return;
@@ -270,7 +446,6 @@ function updatePreConversionSummaryResult() {
     paymentSources: [
       {
         amount: dailyIncomeState.rmbTotal,
-        limitedRechargeAmount: dailyIncomeState.limitedRechargeRmb,
       },
       ...permanentPackState.purchases.map((purchase) => ({
         amount: purchase.price,
@@ -279,8 +454,6 @@ function updatePreConversionSummaryResult() {
       })),
       {
         amount: eventPackPurchaseState.totalPrice,
-        limitedRechargeAmount:
-          eventPackPurchaseState.limitedRechargePrice,
       },
     ],
     resourceInstances: summaryResourceInstances,
@@ -295,13 +468,9 @@ function updatePreConversionSummaryResult() {
 
   preConversionSummaryState.resources = result.resources;
   preConversionSummaryState.rmbTotal = result.rmbTotal;
-  preConversionSummaryState.limitedRechargeRmb =
-    result.limitedRechargeRmb;
 
-  preConversionSummaryView.rmbTotal.textContent = `¥${result.rmbTotal}`;
-  preConversionSummaryView.limitedRechargeRmb.textContent =
-    `¥${result.limitedRechargeRmb}`;
   preConversionSummaryView.error.textContent = "";
+  updateRechargeSummaryResult();
 
   if (currencyPackView) {
     updateCurrencyPacksResult();
@@ -318,7 +487,7 @@ function updateFreeDailyAccumulationResult() {
 
   dailyIncomeState.resources = {};
   dailyIncomeState.rmbTotal = 0;
-  dailyIncomeState.limitedRechargeRmb = 0;
+  dailyIncomeState.monthlyCard = null;
   updatePreConversionSummaryResult();
 
   const outputs = [
@@ -423,8 +592,7 @@ function updateFreeDailyAccumulationResult() {
   };
   dailyIncomeState.rmbTotal =
     cardResult.monthlyCard.purchaseAmountRmb;
-  dailyIncomeState.limitedRechargeRmb =
-    cardResult.monthlyCard.limitedRechargeRmb;
+  dailyIncomeState.monthlyCard = cardResult.monthlyCard;
   freeDailyAccumulationView.error.textContent = "";
   incomeCardView.error.textContent = "";
   updatePreConversionSummaryResult();
@@ -557,6 +725,7 @@ function updateEventIncomeResult() {
   if (dateSelectionState.targetMode !== "banner") {
     const disabledResult = calculateSelectedEventIncome(
       dateSelectionState.targetMode,
+      dateSelectionState.currentDate,
       dateSelectionState.targetDate,
       events,
       eventTypes,
@@ -587,6 +756,7 @@ function updateEventIncomeResult() {
 
   const result = calculateSelectedEventIncome(
     dateSelectionState.targetMode,
+    dateSelectionState.currentDate,
     dateSelectionState.targetDate,
     events,
     eventTypes,
@@ -904,8 +1074,19 @@ function createEventPackCard(eventPack, valueResult, purchases) {
   pack.deferredRewards.forEach((reward) => {
     const deferredReward = document.createElement("p");
     const note = reward.note ? `；${reward.note}` : "";
-    deferredReward.textContent =
-      `购买后可获得：${reward.name}×${reward.amount}${note}`;
+
+    if (reward.type === "relative_daily") {
+      const intervalLabel =
+        reward.intervalDays === 1
+          ? "每天"
+          : `每隔 ${reward.intervalDays} 天`;
+      deferredReward.textContent =
+        `购买后第 ${reward.startOffsetDays} 天起，${intervalLabel}发放` +
+        `${formatEventPackContents(reward.contents)}，共 ${reward.days} 次${note}`;
+    } else {
+      deferredReward.textContent =
+        `购买后可获得：${reward.name}×${reward.amount}${note}`;
+    }
     card.append(deferredReward);
   });
 
@@ -1036,7 +1217,6 @@ function updateEventPacksResult() {
   eventPackView.error.textContent = "";
   eventPackPurchaseState.resources = {};
   eventPackPurchaseState.totalPrice = 0;
-  eventPackPurchaseState.limitedRechargePrice = 0;
   updatePreConversionSummaryResult();
 
   if (eventPacksLoading) {
@@ -1064,8 +1244,6 @@ function updateEventPacksResult() {
   eventPackPurchaseState.purchases = summary.purchaseState;
   eventPackPurchaseState.resources = summary.resources;
   eventPackPurchaseState.totalPrice = summary.totalPrice;
-  eventPackPurchaseState.limitedRechargePrice =
-    summary.limitedRechargePrice;
   updatePreConversionSummaryResult();
   const displayableEventPacks = getDisplayableEventPacks(
     eventPacks,
@@ -1180,8 +1358,13 @@ function initializeDateModule() {
 
   function renderBannerOptions() {
     bannerSelect.replaceChildren();
+    const visibleBanners = [
+      ...banners.filter((banner) => banner.archive !== true),
+    ].sort((firstBanner, secondBanner) =>
+      firstBanner.startDate.localeCompare(secondBanner.startDate),
+    );
 
-    if (banners.length === 0) {
+    if (visibleBanners.length === 0) {
       const option = document.createElement("option");
       option.value = "";
       option.textContent = "无可用卡池";
@@ -1189,7 +1372,7 @@ function initializeDateModule() {
       return;
     }
 
-    banners.forEach((banner) => {
+    visibleBanners.forEach((banner) => {
       const option = document.createElement("option");
       option.value = banner.id;
       option.textContent = formatBannerOptionLabel(banner);
@@ -1759,10 +1942,6 @@ function initializePreConversionSummaryModule() {
         "#pre-conversion-limited-paint",
       ),
     },
-    rmbTotal: document.querySelector("#pre-conversion-rmb-total"),
-    limitedRechargeRmb: document.querySelector(
-      "#pre-conversion-limited-recharge-rmb",
-    ),
     availablePulls: document.querySelector("#available-pulls-total"),
     limitedPaintLabel: document.querySelector(
       "#pre-conversion-limited-paint-label",
@@ -1771,6 +1950,86 @@ function initializePreConversionSummaryModule() {
   };
 
   updatePreConversionSummaryResult();
+}
+
+function initializeRechargeSummaryModule() {
+  rechargeSummaryView = {
+    rmbTotal: document.querySelector("#rmb-total"),
+    eventField: document.querySelector("#recharge-event-field"),
+    eventSelect: document.querySelector("#recharge-event-select"),
+    eventMessage: document.querySelector("#recharge-event-message"),
+    monthlyCardField: document.querySelector(
+      "#monthly-card-recharge-field",
+    ),
+    monthlyCardQuantity: document.querySelector(
+      "#monthly-card-recharge-quantity",
+    ),
+    monthlyCardMaximum: document.querySelector(
+      "#monthly-card-recharge-maximum",
+    ),
+    limitedRechargeRmb: document.querySelector(
+      "#limited-recharge-rmb",
+    ),
+    error: document.querySelector("#recharge-summary-error"),
+  };
+
+  rechargeSummaryView.eventSelect.addEventListener("change", () => {
+    rechargeSummaryState.selectedRechargeEventId =
+      rechargeSummaryView.eventSelect.value;
+    updateRechargeSummaryResult();
+  });
+
+  rechargeSummaryView.monthlyCardQuantity.addEventListener(
+    "input",
+    () => {
+      const result = parseInventoryAmount(
+        rechargeSummaryView.monthlyCardQuantity.value,
+      );
+      const maximumQuantity = Number(
+        rechargeSummaryView.monthlyCardQuantity.max,
+      );
+
+      if (!result.valid || result.amount > maximumQuantity) {
+        rechargeSummaryView.monthlyCardQuantity.setAttribute(
+          "aria-invalid",
+          "true",
+        );
+        rechargeSummaryView.error.textContent = result.valid
+          ? `月卡计入本期数量不得超过 ${maximumQuantity} 张。`
+          : result.error;
+        return;
+      }
+
+      rechargeSummaryView.monthlyCardQuantity.setAttribute(
+        "aria-invalid",
+        "false",
+      );
+      rechargeSummaryState.monthlyCardQuantities[
+        rechargeSummaryState.selectedRechargeEventId
+      ] = result.amount;
+      rechargeSummaryState.monthlyCardQuantityTouched[
+        rechargeSummaryState.selectedRechargeEventId
+      ] = true;
+      updateRechargeSummaryResult();
+    },
+  );
+
+  loadRechargeEvents()
+    .then((loadedRechargeEvents) => {
+      rechargeEvents = loadedRechargeEvents;
+      rechargeEventsLoadError = "";
+    })
+    .catch(() => {
+      rechargeEvents = [];
+      rechargeEventsLoadError =
+        "限时累充数据加载失败，请使用本地开发服务器打开页面。";
+    })
+    .finally(() => {
+      rechargeEventsLoading = false;
+      updateRechargeSummaryResult();
+    });
+
+  updateRechargeSummaryResult();
 }
 
 function formatCurrencyPackContents(contents) {
@@ -2222,5 +2481,6 @@ if (typeof document !== "undefined") {
   initializeEventPacksModule();
   initializeOtherModule();
   initializePreConversionSummaryModule();
+  initializeRechargeSummaryModule();
   initializeCurrencyPacksModule();
 }

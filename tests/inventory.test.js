@@ -40,10 +40,10 @@ const resourceTypeData = JSON.parse(
   readProjectFile(path.join("data", "resources", "resource-types.json")),
 );
 const resourceInstanceData = JSON.parse(
-  readProjectFile(path.join("data", "resources", "test-resources.json")),
+  readProjectFile(path.join("data", "resources", "resources.json")),
 );
 const bannerData = JSON.parse(
-  readProjectFile(path.join("data", "banners", "test-banner.json")),
+  readProjectFile(path.join("data", "banners", "banners.json")),
 );
 const indexHtml = readProjectFile("index.html");
 const appContext = vm.createContext({ parseInventoryAmount });
@@ -269,7 +269,7 @@ const loaderContext = vm.createContext({
     return {
       ok: true,
       json: async () =>
-        requestedPath === "data/resources/test-resources.json"
+        requestedPath === "data/resources/resources.json"
           ? resourceInstanceData
           : resourceTypeData,
     };
@@ -298,9 +298,15 @@ const loadResourceInstances = vm.runInContext(
   );
 
   assert.equal(requestedPaths[0], "data/resources/resource-types.json");
-  assert.equal(requestedPaths[1], "data/resources/test-resources.json");
+  assert.equal(requestedPaths[1], "data/resources/resources.json");
   assert.equal(resourceTypes.length, 5);
-  assert.equal(timedPaintBatches.length, 2);
+  assert.equal(timedPaintBatches.length, 3);
+  assert.equal(
+    timedPaintBatches.some(
+      (resource) => resource.id === "timed-paint-怪谈活动",
+    ),
+    true,
+  );
   assert.equal(limitedPaintResources.length, 3);
   console.log("inventory module: fixed and dynamic resource tests passed");
 })().catch((error) => {

@@ -23,7 +23,20 @@
       "otherContents": [],
       "prerequisites": [],
       "trigger": null,
-      "deferredRewards": []
+      "deferredRewards": [
+        {
+          "type": "relative_daily",
+          "startOffsetDays": 1,
+          "days": 5,
+          "intervalDays": 1,
+          "contents": [
+            {
+              "resourceId": "common_paint",
+              "amount": 1
+            }
+          ]
+        }
+      ]
     }
   ]
 }

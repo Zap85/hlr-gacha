@@ -14,19 +14,35 @@ const eventPackData = JSON.parse(
     path.join("data", "packs", "event-packs", "庄园诡戏.json"),
   ),
 );
+const strangeEventPackData = JSON.parse(
+  readProjectFile(
+    path.join("data", "packs", "event-packs", "怪谈活动.json"),
+  ),
+);
+const eventPackTemplate = JSON.parse(
+  readProjectFile(
+    path.join(
+      "data",
+      "packs",
+      "event-packs",
+      "event-pack.template.json",
+    ),
+  ),
+);
 const resourceTypeData = JSON.parse(
   readProjectFile(path.join("data", "resources", "resource-types.json")),
 );
 const resourceInstanceData = JSON.parse(
-  readProjectFile(path.join("data", "resources", "test-resources.json")),
+  readProjectFile(path.join("data", "resources", "resources.json")),
 );
 const constantsData = JSON.parse(
   readProjectFile(path.join("data", "constants.json")),
 );
 const eventData = JSON.parse(
-  readProjectFile(path.join("data", "events", "test-event.json")),
+  readProjectFile(path.join("data", "events", "events.json")),
 );
 const packs = eventPackData.packs;
+const strangePacks = strangeEventPackData.packs;
 const indexHtml = readProjectFile("index.html");
 
 assert.equal(eventPackData.id, "庄园诡戏礼包");
@@ -38,10 +54,27 @@ assert.equal(
 );
 assert.equal(eventPackData.startDate, "2026-08-26");
 assert.equal(eventPackData.endDate, "2026-09-02");
-assert.equal(packs.length, 17);
-assert.equal(new Set(packs.map((pack) => pack.id)).size, 17);
+assert.equal(packs.length, 19);
+assert.equal(new Set(packs.map((pack) => pack.id)).size, 19);
 assert.equal(
   packs.every((pack) => pack.countsTowardLimitedRecharge === true),
+  true,
+);
+assert.equal(strangeEventPackData.id, "怪谈活动");
+assert.equal(strangeEventPackData.name, "怪谈活动");
+assert.equal(strangeEventPackData.eventId, "怪谈活动");
+assert.equal(
+  eventData.events.some((event) => event.id === strangeEventPackData.eventId),
+  true,
+);
+assert.equal(strangeEventPackData.startDate, "2026-09-03");
+assert.equal(strangeEventPackData.endDate, "2026-09-09");
+assert.equal(strangePacks.length, 18);
+assert.equal(new Set(strangePacks.map((pack) => pack.id)).size, 18);
+assert.equal(
+  strangePacks.every(
+    (pack) => pack.countsTowardLimitedRecharge === true,
+  ),
   true,
 );
 assert.match(indexHtml, /<summary[^>]*>活动礼包<\/summary>/);
@@ -105,6 +138,46 @@ const coffeePack = findPack("咖啡外送订单");
 assert.equal(coffeePack.contents.length, 0);
 assert.equal(coffeePack.otherContents.some((item) => item.name === "金币"), true);
 
+const findStrangePack = (id) =>
+  strangePacks.find((pack) => pack.id === id);
+assert.equal(findStrangePack("怪谈每日好感包").purchaseRule.type, "daily");
+assert.equal(findStrangePack("咖啡外送订单").purchaseRule.type, "daily");
+assert.equal(findStrangePack("怪谈大型颜料箱").purchaseRule.limit, 2);
+assert.equal(findStrangePack("怪谈颜料套装").purchaseRule.limit, 4);
+assert.deepEqual(findStrangePack("怪谈3元礼包").contents, [
+  { resourceId: "timed-paint-怪谈活动", amount: 1 },
+]);
+assert.deepEqual(findStrangePack("怪谈像素盒").contents, [
+  { resourceId: "timed-paint-怪谈活动", amount: 8 },
+]);
+const strangeContinuousPack = findStrangePack("怪谈特惠连续包");
+assert.equal(
+  strangeContinuousPack.contents.some(
+    (content) => content.resourceId === "common_paint",
+  ),
+  false,
+);
+assert.equal(strangeContinuousPack.deferredRewards.length, 1);
+assert.deepEqual(strangeContinuousPack.deferredRewards[0], {
+  type: "relative_daily",
+  startOffsetDays: 1,
+  days: 5,
+  intervalDays: 1,
+  contents: [{ resourceId: "common_paint", amount: 1 }],
+});
+assert.equal(
+  eventPackTemplate.packs[0].deferredRewards[0].type,
+  "relative_daily",
+);
+assert.equal(
+  strangePacks.some(
+    (pack) =>
+      Object.hasOwn(pack, "theoreticalPulls") ||
+      Object.hasOwn(pack, "pricePerPull"),
+  ),
+  false,
+);
+
 const calculatorContext = vm.createContext({ Date });
 vm.runInContext(
   readProjectFile(path.join("js", "calculator.js")),
@@ -132,6 +205,10 @@ const updateEventPackPurchase = vm.runInContext(
 );
 const calculateEventPackPurchaseSummary = vm.runInContext(
   "calculateEventPackPurchaseSummary",
+  calculatorContext,
+);
+const calculateEventPackDeferredRewards = vm.runInContext(
+  "calculateEventPackDeferredRewards",
   calculatorContext,
 );
 const calculatePackValue = vm.runInContext(
@@ -265,6 +342,101 @@ const zeroPullValuation = calculatePackValue(
 assert.equal(zeroPullValuation.valid, true);
 assert.equal(zeroPullValuation.theoreticalPulls, 0);
 assert.equal(zeroPullValuation.pricePerPull, null);
+
+const strangeContinuousValue = calculatePackValue(
+  strangeContinuousPack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-09-03",
+    targetBanner: { id: "怪谈系列（司岚or叶瑄）", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(strangeContinuousValue.valid, true);
+assert.ok(
+  Math.abs(strangeContinuousValue.theoreticalPulls - 6.8666666667) <
+    1e-9,
+);
+assert.ok(
+  Math.abs(strangeContinuousValue.pricePerPull - 28 / 6.8666666667) <
+    1e-9,
+);
+
+const deferredTestEventPack = {
+  ...strangeEventPackData,
+  startDate: "2026-09-02",
+  endDate: "2026-09-09",
+};
+const earlyRangeDeferred = calculateEventPackDeferredRewards(
+  deferredTestEventPack,
+  strangeContinuousPack,
+  1,
+  "2026-09-01",
+  "2026-09-10",
+);
+assert.equal(earlyRangeDeferred.assumedPurchaseDate, "2026-09-02");
+assert.equal(earlyRangeDeferred.deliveredOccurrences, 5);
+assert.equal(earlyRangeDeferred.resources.common_paint, 5);
+
+const lateRangeDeferred = calculateEventPackDeferredRewards(
+  deferredTestEventPack,
+  strangeContinuousPack,
+  1,
+  "2026-09-03",
+  "2026-09-08",
+);
+assert.equal(lateRangeDeferred.assumedPurchaseDate, "2026-09-03");
+assert.equal(lateRangeDeferred.deliveredOccurrences, 5);
+
+const purchaseDayDeferred = calculateEventPackDeferredRewards(
+  deferredTestEventPack,
+  strangeContinuousPack,
+  1,
+  "2026-09-03",
+  "2026-09-03",
+);
+assert.equal(purchaseDayDeferred.assumedPurchaseDate, "2026-09-03");
+assert.equal(purchaseDayDeferred.deliveredOccurrences, 0);
+assert.deepEqual(
+  Object.fromEntries(Object.entries(purchaseDayDeferred.resources)),
+  {},
+);
+
+const partialDeferred = calculateEventPackDeferredRewards(
+  deferredTestEventPack,
+  strangeContinuousPack,
+  1,
+  "2026-09-03",
+  "2026-09-05",
+);
+assert.equal(partialDeferred.deliveredOccurrences, 2);
+assert.equal(partialDeferred.resources.common_paint, 2);
+
+const fullDeferred = calculateEventPackDeferredRewards(
+  deferredTestEventPack,
+  strangeContinuousPack,
+  1,
+  "2026-09-03",
+  "2026-09-08",
+);
+assert.equal(fullDeferred.deliveredOccurrences, 5);
+assert.equal(fullDeferred.resources.common_paint, 5);
+
+const shortEventPack = {
+  ...deferredTestEventPack,
+  endDate: "2026-09-04",
+};
+const afterEventEndDeferred = calculateEventPackDeferredRewards(
+  shortEventPack,
+  strangeContinuousPack,
+  1,
+  "2026-09-03",
+  "2026-09-08",
+);
+assert.equal(afterEventEndDeferred.assumedPurchaseDate, "2026-09-03");
+assert.equal(afterEventEndDeferred.deliveredOccurrences, 5);
+assert.equal(afterEventEndDeferred.resources.common_paint, 5);
 
 const secondDisplayPack = {
   ...eventPackData,
@@ -488,11 +660,44 @@ const purchaseSummary = calculateEventPackPurchaseSummary(
   "2026-09-02",
 );
 assert.equal(purchaseSummary.totalPrice, 749);
-assert.equal(purchaseSummary.limitedRechargePrice, 749);
 assert.equal(purchaseSummary.resources.common_paint, 109);
 assert.equal(purchaseSummary.resources.diamond, 68);
 assert.equal("金币" in purchaseSummary.resources, false);
 assert.equal("莱顿庄园-初融" in purchaseSummary.resources, false);
+
+let strangeSummaryState = createEventPackPurchaseState([
+  strangeEventPackData,
+]);
+const strangeContinuousUpdate = updateEventPackPurchase(
+  strangeEventPackData,
+  strangeSummaryState[strangeEventPackData.id],
+  strangeContinuousPack.id,
+  true,
+  1,
+  "2026-09-01",
+  "2026-09-10",
+);
+assert.equal(strangeContinuousUpdate.valid, true);
+strangeSummaryState[strangeEventPackData.id] =
+  strangeContinuousUpdate.purchases;
+const strangePurchaseSummary = calculateEventPackPurchaseSummary(
+  [strangeEventPackData],
+  strangeSummaryState,
+  "2026-09-01",
+  "2026-09-10",
+);
+assert.equal(strangePurchaseSummary.resources.diamond, 280);
+assert.equal(strangePurchaseSummary.resources.common_paint, 5);
+
+const partialStrangePurchaseSummary =
+  calculateEventPackPurchaseSummary(
+    [strangeEventPackData],
+    strangeSummaryState,
+    "2026-09-03",
+    "2026-09-05",
+  );
+assert.equal(partialStrangePurchaseSummary.resources.diamond, 280);
+assert.equal(partialStrangePurchaseSummary.resources.common_paint, 2);
 
 const loaderContext = vm.createContext({ Date });
 vm.runInContext(
@@ -516,6 +721,12 @@ const validResourceIds = new Set([
 
 assert.equal(
   packs.every((pack) => isValidEventPackItem(pack, validResourceIds)),
+  true,
+);
+assert.equal(
+  strangePacks.every((pack) =>
+    isValidEventPackItem(pack, validResourceIds),
+  ),
   true,
 );
 
@@ -582,8 +793,9 @@ loaderContext.fetch = async (requestedPath) => {
 
   const dataByPath = {
     "data/resources/resource-types.json": resourceTypeData,
-    "data/resources/test-resources.json": resourceInstanceData,
+    "data/resources/resources.json": resourceInstanceData,
     "data/packs/event-packs/庄园诡戏.json": eventPackData,
+    "data/packs/event-packs/怪谈活动.json": strangeEventPackData,
     "event-pack-one.json": eventPackData,
     "event-pack-two.json": secondEventPack,
   };
@@ -601,10 +813,11 @@ loaderContext.fetch = async (requestedPath) => {
     "event-pack-two.json",
   ]);
 
-  assert.equal(defaultLoaded.length, 1);
+  assert.equal(defaultLoaded.length, 2);
   assert.equal(defaultLoaded[0].id, "庄园诡戏礼包");
+  assert.equal(defaultLoaded[1].id, "怪谈活动");
   assert.equal(loaded.length, 2);
-  assert.equal(loaded[0].packs.length, 17);
+  assert.equal(loaded[0].packs.length, 19);
   assert.equal(loaded[1].id, "sample-second-event-pack");
   assert.equal(requestedPaths.includes("event-pack-one.json"), true);
   assert.equal(requestedPaths.includes("event-pack-two.json"), true);

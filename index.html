@@ -14,7 +14,7 @@
           <h1>时空中的绘旅人攒抽计算器</h1>
           <button id="user-guide-toggle" class="user-guide-toggle" type="button" aria-controls="user-guide-modal" aria-haspopup="dialog">使用说明</button>
         </div>
-        <p>开发测试版</p>
+        <p>开发测试版 （建议与 Bug 反馈：小红书 @ZAP85）</p>
       </header>
 
       <div id="user-guide-modal" class="user-guide-modal" hidden>
@@ -104,16 +104,43 @@
             <dt id="pre-conversion-limited-paint-label">限定老荷兰</dt>
             <dd><output id="pre-conversion-limited-paint">0</output></dd>
           </div>
-          <div>
-            <dt>氪金总金额</dt>
-            <dd><output id="pre-conversion-rmb-total">¥0</output></dd>
-          </div>
-          <div>
-            <dt>计入限时累充金额</dt>
-            <dd><output id="pre-conversion-limited-recharge-rmb">¥0</output></dd>
-          </div>
         </dl>
         <p id="pre-conversion-error" class="date-error" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="recharge-summary-section-title">
+        <h2 id="recharge-summary-section-title">氪金总计</h2>
+        <dl class="accumulation-summary">
+          <div>
+            <dt>氪金总金额</dt>
+            <dd><output id="rmb-total">¥0</output></dd>
+          </div>
+        </dl>
+
+        <div class="recharge-summary-fields">
+          <label id="recharge-event-field">
+            限时累充
+            <select id="recharge-event-select"></select>
+          </label>
+          <p id="recharge-event-message" class="inventory-description" hidden></p>
+
+          <label id="monthly-card-recharge-field" hidden>
+            月卡计入本期
+            <span class="recharge-quantity-control">
+              <input id="monthly-card-recharge-quantity" type="number" min="0" step="1" value="0">
+              张
+            </span>
+            <small id="monthly-card-recharge-maximum" class="inventory-description"></small>
+          </label>
+        </div>
+
+        <dl class="accumulation-summary">
+          <div>
+            <dt>计入限时累充金额</dt>
+            <dd><output id="limited-recharge-rmb">¥0</output></dd>
+          </div>
+        </dl>
+        <p id="recharge-summary-error" class="date-error" aria-live="polite"></p>
       </section>
         </aside>
 

@@ -13,6 +13,13 @@
       "expiresAt": "2026-08-16"
     },
     {
+      "id": "timed-paint-怪谈活动",
+      "name": "怪谈活动限时老荷兰",
+      "category": "timed_paint",
+      "availableFrom": "2026-09-03",
+      "expiresAt": "2026-09-09"
+    },
+    {
       "id": "通票老荷兰",
       "name": "通票老荷兰",
       "category": "limited_paint",

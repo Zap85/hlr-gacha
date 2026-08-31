@@ -34,7 +34,7 @@ const parseResourceAdjustment = vm.runInContext(
 );
 const resourceInstances = JSON.parse(
   readProjectFile(
-    path.join("data", "resources", "test-resources.json"),
+    path.join("data", "resources", "resources.json"),
   ),
 ).resources;
 const indexHtml = readProjectFile("index.html");
@@ -101,8 +101,8 @@ assert.equal(combined.resources.common_paint, 6);
 assert.equal(combined.resources.timed_paint, 2);
 assert.equal(combined.resources.limited_paint, 10);
 assert.equal(combined.rmbTotal, 178);
-assert.equal(combined.limitedRechargeRmb, 152);
 assert.equal("pulls" in combined, false);
+assert.equal("limitedRechargeRmb" in combined, false);
 
 const combinedFinal = calculateFinalResourceTotals(combined.resources, {
   diamond: 1,
@@ -182,7 +182,7 @@ assert.equal(negativeAdjustments.resources.common_paint, 3);
 assert.equal(negativeAdjustments.resources.timed_paint, -1);
 assert.equal(negativeAdjustments.resources.limited_paint, -3);
 assert.equal(resourcesBeforeNegativeAdjustments.rmbTotal, 0);
-assert.equal(resourcesBeforeNegativeAdjustments.limitedRechargeRmb, 0);
+assert.equal("limitedRechargeRmb" in resourcesBeforeNegativeAdjustments, false);
 
 const resourcesBeforeInputChange = calculatePreConversionSummary().resources;
 const beforeInputChange = calculateFinalResourceTotals(
