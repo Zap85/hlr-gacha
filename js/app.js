@@ -1247,7 +1247,7 @@ function updateEventPacksResult() {
   updatePreConversionSummaryResult();
   const displayableEventPacks = getDisplayableEventPacks(
     eventPacks,
-    dateSelectionState.targetDate,
+    dateSelectionState.currentDate,
   );
 
   if (displayableEventPacks.length === 0) {

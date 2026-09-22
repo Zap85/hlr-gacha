@@ -651,10 +651,18 @@ function isEventPackVisible(targetDate, eventPack) {
   );
 }
 
-function getDisplayableEventPacks(eventPacks, targetDate) {
-  return eventPacks.filter((eventPack) =>
-    isEventPackVisible(targetDate, eventPack),
-  );
+function getDisplayableEventPacks(eventPacks, currentDate) {
+  const currentTimestamp = parseCalendarDate(currentDate);
+
+  if (currentTimestamp === null) {
+    return [];
+  }
+
+  return eventPacks.filter((eventPack) => {
+    const endTimestamp = parseCalendarDate(eventPack.endDate);
+
+    return endTimestamp !== null && currentTimestamp <= endTimestamp;
+  });
 }
 
 function calculateEventPackDailyAvailability(

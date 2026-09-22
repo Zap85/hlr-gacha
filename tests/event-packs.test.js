@@ -44,6 +44,7 @@ const eventData = JSON.parse(
 const packs = eventPackData.packs;
 const strangePacks = strangeEventPackData.packs;
 const indexHtml = readProjectFile("index.html");
+const appSource = readProjectFile(path.join("js", "app.js"));
 
 assert.equal(eventPackData.id, "庄园诡戏礼包");
 assert.equal(eventPackData.name, "庄园诡戏礼包");
@@ -444,18 +445,31 @@ const secondDisplayPack = {
   name: "第二个测试活动礼包",
 };
 assert.equal(
-  getDisplayableEventPacks(
-    [eventPackData, secondDisplayPack],
-    "2026-08-26",
-  ).length,
-  2,
+  getDisplayableEventPacks([eventPackData], "2026-09-01").length,
+  1,
+);
+assert.equal(
+  getDisplayableEventPacks([eventPackData], "2026-09-02").length,
+  1,
+);
+assert.equal(
+  getDisplayableEventPacks([eventPackData], "2026-09-03").length,
+  0,
+);
+assert.equal(
+  getDisplayableEventPacks([eventPackData], "2026-08-25").length,
+  1,
 );
 assert.equal(
   getDisplayableEventPacks(
     [eventPackData, secondDisplayPack],
-    "2026-08-25",
+    "2026-09-02",
   ).length,
-  0,
+  2,
+);
+assert.match(
+  appSource,
+  /getDisplayableEventPacks\(\s*eventPacks,\s*dateSelectionState\.currentDate,\s*\)/,
 );
 
 const dailyAvailability = calculateEventPackDailyAvailability(
