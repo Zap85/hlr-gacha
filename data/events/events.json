@@ -41,6 +41,42 @@
         "complete": {}
       },
       "exchanges": []
+    },
+    {
+      "id": "六周年预热",
+      "name": "六周年预热",
+      "type": "五人活动",
+      "startDate": "2026-09-19",
+      "endDate": "2026-10-12",
+      "status": "current",
+      "isRerun": false,
+      "incomeAdjustment": {
+        "available": {
+          "diamond": -140,
+          "common_paint": 0,
+          "timed_paint": 13
+        },
+        "complete": {
+          "diamond": -1106,
+          "common_paint": -2,
+          "timed_paint": 3
+        }
+      },
+      "exchanges": []
+    },
+    {
+      "id": "六周年庆典",
+      "name": "六周年庆典",
+      "type": "五人活动",
+      "startDate": "2026-09-24",
+      "endDate": "2026-10-12",
+      "status": "future",
+      "isRerun": false,
+      "incomeAdjustment": {
+        "available": {},
+        "complete": {}
+      },
+      "exchanges": []
     }
   ]
 }

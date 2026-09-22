@@ -38,16 +38,54 @@ const getDefaultSelectedEventIds = vm.runInContext(
 );
 
 const eventTypeIds = new Set(eventTypes.map((eventType) => eventType.id));
+assert.equal(new Set(events.map((event) => event.id)).size, events.length);
+assert.equal(
+  events.every(
+    (event) =>
+      typeof event.name === "string" &&
+      event.name.trim() !== "" &&
+      event.startDate <= event.endDate &&
+      eventTypeIds.has(event.type) &&
+      ["available", "complete"].every(
+        (phase) =>
+          event.incomeAdjustment[phase] !== null &&
+          typeof event.incomeAdjustment[phase] === "object" &&
+          !Array.isArray(event.incomeAdjustment[phase]) &&
+          Object.entries(event.incomeAdjustment[phase]).every(
+            ([resourceId, amount]) =>
+              resourceId.trim() !== "" && Number.isSafeInteger(amount),
+          ),
+      ),
+  ),
+  true,
+);
 assert.equal(events.every((event) => eventTypeIds.has(event.type)), true);
 assert.equal(
   events.every((event) => ["current", "future"].includes(event.status)),
   true,
 );
-assert.equal(eventTypes.length, 2);
-assert.equal(events.length, 3);
 
 const rerunEvent = events.find((event) => event.id === "庄园诡戏");
 const soloEvent = events.find((event) => event.id === "怪谈：电子");
+const anniversaryWarmup = events.find((event) => event.id === "六周年预热");
+const anniversaryCelebration = events.find(
+  (event) => event.id === "六周年庆典",
+);
+const fivePersonEventType = eventTypes.find(
+  (eventType) => eventType.id === "五人活动",
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(fivePersonEventType)),
+  {
+    id: "五人活动",
+    available: { diamond: 300, common_paint: 1, timed_paint: 4 },
+    complete: { diamond: 1266, common_paint: 3, timed_paint: 14 },
+  },
+);
+assert.equal(anniversaryWarmup.type, "五人活动");
+assert.equal(anniversaryWarmup.startDate, "2026-09-19");
+assert.equal(anniversaryWarmup.endDate, "2026-10-12");
+assert.equal(anniversaryCelebration.type, "五人活动");
 
 const beforeStart = calculateEventIncome(
   "2026-08-01",
@@ -190,10 +228,56 @@ eventDateScenarios.forEach((scenario) => {
 });
 
 const defaultSelectedIds = Array.from(getDefaultSelectedEventIds(events));
-assert.deepEqual(defaultSelectedIds, [
-  "怪谈：电子",
-  "怪谈活动",
-]);
+assert.equal(defaultSelectedIds.includes("庄园诡戏"), false);
+assert.deepEqual(
+  defaultSelectedIds.slice().sort(),
+  events
+    .filter((event) => !event.isRerun)
+    .map((event) => event.id)
+    .sort(),
+);
+
+const warmupAvailable = calculateEventIncome(
+  "2026-09-19",
+  "2026-09-19",
+  anniversaryWarmup,
+  eventTypes,
+);
+const warmupComplete = calculateEventIncome(
+  "2026-09-19",
+  "2026-10-12",
+  anniversaryWarmup,
+  eventTypes,
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(warmupAvailable.resources)),
+  { diamond: 160, common_paint: 1, timed_paint: 17 },
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(warmupComplete.resources)),
+  { diamond: 160, common_paint: 1, timed_paint: 17 },
+);
+
+const celebrationAvailable = calculateEventIncome(
+  "2026-09-23",
+  "2026-09-24",
+  anniversaryCelebration,
+  eventTypes,
+);
+const celebrationComplete = calculateEventIncome(
+  "2026-09-23",
+  "2026-10-12",
+  anniversaryCelebration,
+  eventTypes,
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(celebrationAvailable.resources)),
+  { diamond: 300, common_paint: 1, timed_paint: 4 },
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(celebrationComplete.resources)),
+  { diamond: 1266, common_paint: 3, timed_paint: 14 },
+);
 
 const futureTestEvent = {
   ...soloEvent,
@@ -213,20 +297,21 @@ assert.equal(futureIncome.eligible, true);
 assert.equal(futureIncome.status, "future");
 assert.equal(futureIncome.resources.diamond, 40);
 assert.deepEqual(
-  Array.from(getDefaultSelectedEventIds([...events, futureTestEvent])),
-  ["怪谈：电子", "怪谈活动", "sample-future-event"],
+  Array.from(getDefaultSelectedEventIds([...events, futureTestEvent])).sort(),
+  [...defaultSelectedIds, "sample-future-event"].sort(),
 );
 
+const defaultSelectionFixture = [rerunEvent, soloEvent];
 const onlyDefaultSelected = calculateSelectedEventIncome(
   "banner",
   "2026-08-01",
   "2026-09-26",
-  events,
+  defaultSelectionFixture,
   eventTypes,
-  defaultSelectedIds,
+  getDefaultSelectedEventIds(defaultSelectionFixture),
 );
 assert.equal(onlyDefaultSelected.enabled, true);
-assert.equal(onlyDefaultSelected.selectedResources.diamond, 720);
+assert.equal(onlyDefaultSelected.selectedResources.diamond, 360);
 assert.equal(onlyDefaultSelected.selectedResources.common_paint, undefined);
 
 const bothSelected = calculateSelectedEventIncome(
@@ -316,13 +401,22 @@ assert.equal(getEventIncomeLabel("future"), "预计可计入");
   const loadedEventTypes = await loadEventTypes();
   const loadedEvents = await loadEvents();
 
-  assert.deepEqual(
-    Array.from(loadedEventTypes, (eventType) => eventType.id),
-    ["复刻活动", "单人活动"],
+  assert.equal(
+    new Set(loadedEventTypes.map((eventType) => eventType.id)).size,
+    loadedEventTypes.length,
   );
-  assert.deepEqual(
-    Array.from(loadedEvents, (event) => event.id),
-    ["庄园诡戏", "怪谈：电子", "怪谈活动"],
+  assert.equal(
+    new Set(loadedEvents.map((event) => event.id)).size,
+    loadedEvents.length,
+  );
+  assert.equal(
+    loadedEvents.every(
+      (event) =>
+        isValidEvent(event) &&
+        eventTypeIds.has(event.type) &&
+        event.startDate <= event.endDate,
+    ),
+    true,
   );
   assert.equal(loadedEvents.every((event) => Array.isArray(event.exchanges)), true);
   assert.deepEqual(requestedPaths, [
