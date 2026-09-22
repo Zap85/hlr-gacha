@@ -4,10 +4,20 @@
 }
 
 .user-guide-content {
+  min-width: 0;
   width: 100%;
-  max-width: 52rem;
+  max-width: min(52rem, 100%);
   line-height: 1.7;
   overflow-wrap: anywhere;
+}
+
+.user-guide-content p,
+.user-guide-content ol,
+.user-guide-content ul,
+.user-guide-content li,
+.user-guide-content a {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .user-guide-content h2 {
