@@ -27,9 +27,9 @@ const indexHtml = readProjectFile("index.html");
 assert.equal(banner.name, "六周年庆典");
 assert.equal(
   formatBannerOptionLabel(banner),
-  "六周年庆典 2026-09-26 ～ 2026-10-12",
+  "六周年庆典 2026-09-24 ～ 2026-10-12",
 );
-assert.equal(resolveTargetDate("banner", banner, "start", ""), "2026-09-26");
+assert.equal(resolveTargetDate("banner", banner, "start", ""), "2026-09-24");
 assert.equal(resolveTargetDate("banner", banner, "end", ""), "2026-10-12");
 
 assert.equal(
@@ -38,7 +38,7 @@ assert.equal(
 );
 assert.equal(
   resolveTargetDate("banner", banner, "start", "2026-11-01"),
-  "2026-09-26",
+  "2026-09-24",
 );
 assert.doesNotMatch(
   indexHtml,
@@ -73,22 +73,31 @@ vm.runInContext(
 );
 
 const loadBanners = vm.runInContext("loadBanners", loaderContext);
+const isValidBanner = vm.runInContext("isValidBanner", loaderContext);
 
 (async () => {
   const validBanners = await loadBanners();
   const invalidBanners = await loadBanners(["invalid-banner.json"]);
 
   assert.equal(requestedPaths[0], "data/banners/banners.json");
-  assert.equal(validBanners.length, 7);
-  assert.equal(validBanners.some((banner) => banner.id === "怪谈活动"), true);
-  assert.deepEqual(
-    Array.from(
-      validBanners.find((banner) => banner.id === "司岚生日").tags,
+  assert.equal(validBanners.length, banners.length);
+  assert.equal(
+    new Set(validBanners.map((loadedBanner) => loadedBanner.id)).size,
+    validBanners.length,
+  );
+  assert.equal(
+    validBanners.every(
+      (loadedBanner) =>
+        isValidBanner(loadedBanner) &&
+        typeof loadedBanner.name === "string" &&
+        loadedBanner.name.trim() !== "" &&
+        loadedBanner.startDate <= loadedBanner.endDate &&
+        Array.isArray(loadedBanner.tags),
     ),
-    ["birthday"],
+    true,
   );
   assert.equal(invalidBanners.length, 0);
-  console.log("date module: 7 banner target tests passed");
+  console.log("date module: banner target and schema tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

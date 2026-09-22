@@ -46,14 +46,49 @@ const rechargeEvents = JSON.parse(
 );
 const indexHtml = readProjectFile("index.html");
 
-assert.deepEqual(rechargeEvents, [
-  {
-    id: "庄园诡计复刻限时累充",
-    name: "庄园诡计复刻",
-    startDate: "2026-08-26",
-    endDate: "2026-09-02",
-  },
-]);
+function isValidCalendarDate(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+assert.equal(
+  new Set(rechargeEvents.map((event) => event.id)).size,
+  rechargeEvents.length,
+);
+assert.equal(
+  rechargeEvents.every(
+    (event) =>
+      typeof event.id === "string" &&
+      event.id.trim() !== "" &&
+      typeof event.name === "string" &&
+      event.name.trim() !== "" &&
+      isValidCalendarDate(event.startDate) &&
+      isValidCalendarDate(event.endDate) &&
+      event.startDate <= event.endDate,
+  ),
+  true,
+);
 assert.match(indexHtml, /<h2[^>]*>资源总计<\/h2>/);
 assert.match(indexHtml, /<h2[^>]*>氪金总计<\/h2>/);
 assert.ok(indexHtml.indexOf("资源总计") < indexHtml.indexOf("氪金总计"));

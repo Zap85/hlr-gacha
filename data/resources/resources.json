@@ -20,6 +20,13 @@
       "expiresAt": "2026-09-09"
     },
     {
+      "id": "timed-paint-六周年",
+      "name": "六周年限时老荷兰",
+      "category": "timed_paint",
+      "availableFrom": "2026-09-19",
+      "expiresAt": "2026-10-12"
+    },
+    {
       "id": "通票老荷兰",
       "name": "通票老荷兰",
       "category": "limited_paint",
@@ -44,6 +51,24 @@
       "applicability": {
         "type": "banner_tag",
         "values": ["birthday"]
+      }
+    },
+    {
+      "id": "limited-paint-昔年老荷兰",
+      "name": "昔年老荷兰",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_id",
+        "values": ["往昔回顾"]
+      }
+    },
+    {
+      "id": "limited-paint-永夜老荷兰",
+      "name": "永夜老荷兰",
+      "category": "limited_paint",
+      "applicability": {
+        "type": "banner_id",
+        "values": ["六周年庆典"]
       }
     }
   ]

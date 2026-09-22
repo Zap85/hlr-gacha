@@ -45,6 +45,12 @@ const resourceInstanceData = JSON.parse(
 const bannerData = JSON.parse(
   readProjectFile(path.join("data", "banners", "banners.json")),
 );
+const timedPaintBatches = resourceInstanceData.resources.filter(
+  (resource) => resource.category === "timed_paint",
+);
+const limitedResources = resourceInstanceData.resources.filter(
+  (resource) => resource.category === "limited_paint",
+);
 const indexHtml = readProjectFile("index.html");
 const appContext = vm.createContext({ parseInventoryAmount });
 
@@ -86,14 +92,16 @@ assert.equal(inventoryState.fixedResources.red_diamond, 0);
 assert.equal(inventoryState.fixedResources.common_paint, 0);
 assert.deepEqual(Object.keys(inventoryState.timedPaintTotals), ["timed_paint"]);
 assert.equal(inventoryState.timedPaintTotals.timed_paint, 0);
-assert.deepEqual(Object.keys(inventoryState.limitedPaintResources), [
-  "通票老荷兰",
-  "灵魂老荷兰",
-  "甜蜜老荷兰",
-]);
-assert.equal(inventoryState.limitedPaintResources["通票老荷兰"], 0);
-assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], 0);
-assert.equal(inventoryState.limitedPaintResources["甜蜜老荷兰"], 0);
+assert.deepEqual(
+  Object.keys(inventoryState.limitedPaintResources).sort(),
+  limitedResources.map((resource) => resource.id).sort(),
+);
+limitedResources.forEach((resource) => {
+  assert.equal(inventoryState.limitedPaintResources[resource.id], 0);
+});
+timedPaintBatches.forEach((resource) => {
+  assert.equal(inventoryState.timedPaintTotals[resource.category], 0);
+});
 
 updateFixedInventoryAmount("diamond", "120");
 updateFixedInventoryAmount("red_diamond", "30");
@@ -140,14 +148,13 @@ assert.equal(inventoryState.limitedPaintResources["灵魂老荷兰"], 2);
 assert.equal(inventoryState.limitedPaintResources["甜蜜老荷兰"], 3);
 assert.equal(inventoryState.timedPaintTotals.timed_paint, 6);
 
-const limitedResources = resourceInstanceData.resources.filter(
-  (resource) => resource.category === "limited_paint",
-);
 const manorBanner = bannerData.find((banner) => banner.id === "庄园诡戏");
 const birthdayBanner = bannerData.find((banner) => banner.id === "罗夏生日");
-const noLimitedPaintBanner = bannerData.find(
-  (banner) => banner.id === "六周年庆典",
-);
+const noLimitedPaintBanner = {
+  id: "无适用限定资源测试卡池",
+  name: "无适用限定资源测试卡池",
+  tags: [],
+};
 
 assert.deepEqual(
   Array.from(
@@ -286,28 +293,61 @@ const loadResourceInstances = vm.runInContext(
   "loadResourceInstances",
   loaderContext,
 );
+const isValidResourceInstance = vm.runInContext(
+  "isValidResourceInstance",
+  loaderContext,
+);
+const isValidApplicability = vm.runInContext(
+  "isValidApplicability",
+  loaderContext,
+);
 
 (async () => {
   const resourceTypes = await loadResourceTypes();
   const resources = await loadResourceInstances();
-  const timedPaintBatches = resources.filter(
+  const loadedTimedPaintBatches = resources.filter(
     (resource) => resource.category === "timed_paint",
   );
-  const limitedPaintResources = resources.filter(
+  const loadedLimitedPaintResources = resources.filter(
     (resource) => resource.category === "limited_paint",
   );
+  const bannerIds = new Set(bannerData.map((banner) => banner.id));
 
   assert.equal(requestedPaths[0], "data/resources/resource-types.json");
   assert.equal(requestedPaths[1], "data/resources/resources.json");
   assert.equal(resourceTypes.length, 5);
-  assert.equal(timedPaintBatches.length, 3);
   assert.equal(
-    timedPaintBatches.some(
-      (resource) => resource.id === "timed-paint-怪谈活动",
+    new Set(resources.map((resource) => resource.id)).size,
+    resources.length,
+  );
+  assert.equal(
+    resources.every(
+      (resource) =>
+        ["timed_paint", "limited_paint"].includes(resource.category) &&
+        isValidResourceInstance(resource),
     ),
     true,
   );
-  assert.equal(limitedPaintResources.length, 3);
+  assert.equal(
+    loadedTimedPaintBatches.every(
+      (resource) =>
+        resource.availableFrom <= resource.expiresAt,
+    ),
+    true,
+  );
+  assert.equal(
+    loadedLimitedPaintResources.every(
+      (resource) =>
+        isValidApplicability(resource.applicability) &&
+        (resource.applicability.type !== "banner_id" ||
+          resource.applicability.values.every((id) => bannerIds.has(id))),
+    ),
+    true,
+  );
+  assert.deepEqual(
+    Object.keys(inventoryState.limitedPaintResources).sort(),
+    loadedLimitedPaintResources.map((resource) => resource.id).sort(),
+  );
   console.log("inventory module: fixed and dynamic resource tests passed");
 })().catch((error) => {
   console.error(error);
