@@ -680,6 +680,9 @@ function isValidEventPackItem(pack, validResourceIds) {
     !Number.isFinite(pack.price) ||
     pack.price < 0 ||
     typeof pack.countsTowardLimitedRecharge !== "boolean" ||
+    (pack.exclusiveGroup !== undefined &&
+      (typeof pack.exclusiveGroup !== "string" ||
+        pack.exclusiveGroup.trim() === "")) ||
     !isValidEventPackPurchaseRule(pack.purchaseRule) ||
     !Array.isArray(pack.contents) ||
     !pack.contents.every((content) =>

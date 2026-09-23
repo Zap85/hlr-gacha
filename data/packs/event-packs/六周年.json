@@ -445,5 +445,425 @@
         "deferredRewards": []
       }
     ]
+  },
+  {
+    "id": "六周年活动礼包2",
+    "name": "六周年活动礼包2",
+    "eventId": "六周年庆典",
+    "startDate": "2026-09-24",
+    "endDate": "2026-10-12",
+    "packs": [
+      {
+        "id": "永夜1元",
+        "name": "永夜1元",
+        "price": 1,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "diamond", "amount": 100 }
+        ],
+        "otherContents": [
+          { "name": "香浓拿铁", "amount": 1 },
+          { "name": "星尘之铃·承", "amount": 5 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜3元",
+        "name": "永夜3元",
+        "price": 3,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 1 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜点触礼盒",
+        "name": "永夜点触礼盒",
+        "price": 30,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 5 }
+        ],
+        "otherContents": [
+          { "name": "点击特效·血舞", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜档案颜料包",
+        "name": "永夜档案颜料包",
+        "price": 60,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 10 }
+        ],
+        "otherContents": [
+          { "name": "卡套·幽夜绮梦", "amount": 1 },
+          { "name": "档案自选", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜档案颜料包II",
+        "name": "永夜档案颜料包II",
+        "price": 88,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 15 }
+        ],
+        "otherContents": [
+          { "name": "档案自选", "amount": 2 }
+        ],
+        "prerequisites": ["永夜档案颜料包"],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜档案颜料包III",
+        "name": "永夜档案颜料包III",
+        "price": 128,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 25 }
+        ],
+        "otherContents": [
+          { "name": "档案自选", "amount": 2 }
+        ],
+        "prerequisites": ["永夜档案颜料包II"],
+        "trigger": null,
+        "deferredRewards": [],
+        "note": "重复档案转化为金币2000"
+      },
+      {
+        "id": "永夜推送礼",
+        "name": "永夜推送礼",
+        "price": 28,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 8 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 10 },
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜推送礼II",
+        "name": "永夜推送礼II",
+        "price": 12,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 2 },
+          { "resourceId": "diamond", "amount": 50 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 30 },
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜推送礼III",
+        "name": "永夜推送礼III",
+        "price": 68,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 12 }
+        ],
+        "otherContents": [
+          { "name": "金币", "amount": 50000 }
+        ],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 80 },
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜推送礼IV",
+        "name": "永夜推送礼IV",
+        "price": 188,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 35 }
+        ],
+        "otherContents": [
+          { "name": "星尘之铃·破", "amount": 50 },
+          { "name": "金币", "amount": 100000 }
+        ],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 180 },
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜推送礼V",
+        "name": "永夜推送礼V",
+        "price": 688,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 138 }
+        ],
+        "otherContents": [
+          { "name": "星尘之铃·破", "amount": 138 },
+          { "name": "金币", "amount": 300000 }
+        ],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 380 },
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜每日礼包",
+        "name": "永夜每日礼包",
+        "price": 6,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "daily", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 1 },
+          { "resourceId": "diamond", "amount": 20 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [],
+        "exclusiveGroup": "六周年-永夜每日礼包购买方式"
+      },
+      {
+        "id": "永夜每日礼包首日打包",
+        "name": "永夜每日礼包首日打包",
+        "price": 108,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [
+          {
+            "type": "relative_daily",
+            "startOffsetDays": 0,
+            "days": 19,
+            "intervalDays": 1,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 1 },
+              { "resourceId": "diamond", "amount": 20 }
+            ]
+          }
+        ],
+        "exclusiveGroup": "六周年-永夜每日礼包购买方式"
+      },
+      {
+        "id": "永夜颜料盒",
+        "name": "永夜颜料盒",
+        "price": 12,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 2 }
+        ],
+        "otherContents": [
+          { "name": "白桃布丁", "amount": 2 },
+          { "name": "金币", "amount": 15000 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "周年钻石精品包",
+        "name": "周年钻石精品包",
+        "price": 28,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "diamond", "amount": 280 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [
+          {
+            "type": "relative_daily",
+            "startOffsetDays": 1,
+            "days": 7,
+            "intervalDays": 1,
+            "contents": [
+              { "resourceId": "diamond", "amount": 100 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "周年连续特惠包",
+        "name": "周年连续特惠包",
+        "price": 45,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "diamond", "amount": 450 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [
+          {
+            "type": "relative_daily",
+            "startOffsetDays": 1,
+            "days": 7,
+            "intervalDays": 1,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 1 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "周年颜料连续包",
+        "name": "周年颜料连续包",
+        "price": 88,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "diamond", "amount": 880 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [
+          {
+            "type": "relative_daily",
+            "startOffsetDays": 1,
+            "days": 15,
+            "intervalDays": 1,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 1 },
+              { "resourceId": "diamond", "amount": 20 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "永夜之城红钻包",
+        "name": "永夜之城红钻包",
+        "price": 68,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "red_diamond", "amount": 680 },
+          { "resourceId": "diamond", "amount": 680 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜之城自选包",
+        "name": "永夜之城自选包",
+        "price": 98,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 10 },
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 10 }
+        ],
+        "otherContents": [],
+        "prerequisites": ["永夜之城红钻包"],
+        "trigger": null,
+        "deferredRewards": [],
+        "note": "礼包内容可自选 永夜老荷兰 ×10 或 红钻 ×980"
+      },
+      {
+        "id": "永夜大型颜料箱",
+        "name": "永夜大型颜料箱",
+        "price": 328,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 2 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 48 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "6周年限定特惠箱",
+        "name": "6周年限定特惠箱",
+        "price": 648,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 66 },
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 66 }
+        ],
+        "otherContents": [
+          { "name": "星尘之铃·破", "amount": 66 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "六周年福袋",
+    "name": "六周年福袋",
+    "eventId": "六周年预热",
+    "startDate": "2026-09-17",
+    "endDate": "2026-10-12",
+    "packs": [
+      {
+        "id": "六周年福袋·常规",
+        "name": "六周年福袋·常规",
+        "price": 128,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [
+          { "name": "随机SSR", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [],
+        "exclusiveGroup": "六周年-福袋",
+        "note": "指定20张SSR范围；优先获得未拥有SSR"
+      },
+      {
+        "id": "六周年福袋·高阶",
+        "name": "六周年福袋·高阶",
+        "price": 188,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 12 }
+        ],
+        "otherContents": [
+          { "name": "指定男主SSR随机", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [],
+        "exclusiveGroup": "六周年-福袋",
+        "note": "17张SSR范围；优先获得未拥有SSR"
+      }
+    ]
   }
 ]

@@ -95,6 +95,8 @@ assert.deepEqual(
     "六周年活动礼包1",
     "往昔回顾画廊触发礼包",
     "绘忆时光",
+    "六周年活动礼包2",
+    "六周年福袋",
   ],
 );
 assert.equal(
@@ -115,6 +117,10 @@ assert.match(
 );
 assert.match(appSource, /期望抽数/);
 assert.match(appSource, /期望单抽价格/);
+assert.match(
+  appSource,
+  /exclusiveGroupOccupied[\s\S]*?is-disabled/,
+);
 const dateRangeFormatterSource = appSource.match(
   /function formatEventPackGroupDateRange\([\s\S]*?\n}/,
 )?.[0];
@@ -127,6 +133,46 @@ assert.equal(
     dateRangeFormatterContext,
   ),
   "09.19-10.12",
+);
+const exclusiveMessageFormatterSource = appSource.match(
+  /function formatEventPackExclusiveGroupMessage\([\s\S]*?\n}/,
+)?.[0];
+assert.notEqual(exclusiveMessageFormatterSource, undefined);
+const exclusiveMessageFormatterContext = vm.createContext({});
+vm.runInContext(
+  exclusiveMessageFormatterSource,
+  exclusiveMessageFormatterContext,
+);
+assert.equal(
+  vm.runInContext(
+    `formatEventPackExclusiveGroupMessage(
+      {
+        packs: [
+          { id: "a", name: "礼包A", exclusiveGroup: "internal-id" },
+          { id: "b", name: "礼包B", exclusiveGroup: "internal-id" }
+        ]
+      },
+      { id: "a", name: "礼包A", exclusiveGroup: "internal-id" }
+    )`,
+    exclusiveMessageFormatterContext,
+  ),
+  "互斥购买：与「礼包B」仅可购买其一",
+);
+assert.equal(
+  vm.runInContext(
+    `formatEventPackExclusiveGroupMessage(
+      {
+        packs: [
+          { id: "a", name: "礼包A", exclusiveGroup: "internal-id" },
+          { id: "b", name: "礼包B", exclusiveGroup: "internal-id" },
+          { id: "c", name: "礼包C", exclusiveGroup: "internal-id" }
+        ]
+      },
+      { id: "a", name: "礼包A", exclusiveGroup: "internal-id" }
+    )`,
+    exclusiveMessageFormatterContext,
+  ),
+  "互斥购买：与「礼包B」「礼包C」仅可购买其一",
 );
 assert.match(indexHtml, /<summary[^>]*>活动礼包<\/summary>/);
 assert.match(indexHtml, /<details class="pack-disclosure event-packs-disclosure">/);
@@ -254,8 +300,16 @@ const updateEventPackPurchase = vm.runInContext(
   "updateEventPackPurchase",
   calculatorContext,
 );
+const isEventPackExclusiveGroupOccupied = vm.runInContext(
+  "isEventPackExclusiveGroupOccupied",
+  calculatorContext,
+);
 const calculateEventPackPurchaseSummary = vm.runInContext(
   "calculateEventPackPurchaseSummary",
+  calculatorContext,
+);
+const calculateEventPackLimitedRechargeRmb = vm.runInContext(
+  "calculateEventPackLimitedRechargeRmb",
   calculatorContext,
 );
 const calculateEventPackDeferredRewards = vm.runInContext(
@@ -470,6 +524,145 @@ const anniversaryContinuousValue = calculatePackValue(
 );
 assert.equal(anniversaryContinuousValue.theoreticalPulls, 55);
 
+const anniversarySecondGroup = anniversaryEventPackData.find(
+  (eventPack) => eventPack.id === "六周年活动礼包2",
+);
+const anniversaryLuckyBagGroup = anniversaryEventPackData.find(
+  (eventPack) => eventPack.id === "六周年福袋",
+);
+const findAnniversarySecondPack = (id) =>
+  anniversarySecondGroup.packs.find((pack) => pack.id === id);
+const dailyPack = findAnniversarySecondPack("永夜每日礼包");
+const bundledDailyPack = findAnniversarySecondPack(
+  "永夜每日礼包首日打包",
+);
+assert.equal(dailyPack.purchaseRule.type, "daily");
+assert.equal(dailyPack.purchaseRule.limit, 1);
+assert.equal(bundledDailyPack.purchaseRule.type, "total");
+assert.equal(bundledDailyPack.purchaseRule.limit, 1);
+assert.equal(
+  dailyPack.exclusiveGroup,
+  "六周年-永夜每日礼包购买方式",
+);
+assert.equal(bundledDailyPack.exclusiveGroup, dailyPack.exclusiveGroup);
+assert.deepEqual(bundledDailyPack.deferredRewards, [
+  {
+    type: "relative_daily",
+    startOffsetDays: 0,
+    days: 19,
+    intervalDays: 1,
+    contents: [
+      { resourceId: "common_paint", amount: 1 },
+      { resourceId: "diamond", amount: 20 },
+    ],
+  },
+]);
+
+const bundledDailyValue = calculatePackValue(
+  bundledDailyPack,
+  70.71,
+  valuationRules,
+);
+assert.ok(
+  Math.abs(bundledDailyValue.theoreticalPulls - 21.5333333333) <
+    1e-9,
+);
+assert.ok(
+  Math.abs(bundledDailyValue.pricePerPull - 108 / 21.5333333333) <
+    1e-9,
+);
+
+const diamondBundleValue = calculatePackValue(
+  findAnniversarySecondPack("周年钻石精品包"),
+  70.71,
+  valuationRules,
+);
+const continuousValue = calculatePackValue(
+  findAnniversarySecondPack("周年连续特惠包"),
+  70.71,
+  valuationRules,
+);
+const paintContinuousValue = calculatePackValue(
+  findAnniversarySecondPack("周年颜料连续包"),
+  70.71,
+  valuationRules,
+);
+assert.ok(
+  Math.abs(diamondBundleValue.theoreticalPulls - 6.5333333333) <
+    1e-9,
+);
+assert.equal(continuousValue.theoreticalPulls, 10);
+assert.ok(
+  Math.abs(paintContinuousValue.theoreticalPulls - 22.8666666667) <
+    1e-9,
+);
+
+assert.deepEqual(
+  [
+    "永夜推送礼",
+    "永夜推送礼II",
+    "永夜推送礼III",
+    "永夜推送礼IV",
+    "永夜推送礼V",
+  ].map((id) => findAnniversarySecondPack(id).trigger.value),
+  [10, 30, 80, 180, 380],
+);
+assert.deepEqual(
+  findAnniversarySecondPack("永夜档案颜料包II").prerequisites,
+  ["永夜档案颜料包"],
+);
+assert.deepEqual(
+  findAnniversarySecondPack("永夜档案颜料包III").prerequisites,
+  ["永夜档案颜料包II"],
+);
+const cityChoicePack = findAnniversarySecondPack("永夜之城自选包");
+const cityRedDiamondPack = findAnniversarySecondPack("永夜之城红钻包");
+assert.deepEqual(cityChoicePack.contents, [
+  { resourceId: "common_paint", amount: 10 },
+  { resourceId: "limited-paint-永夜老荷兰", amount: 10 },
+]);
+assert.equal(
+  cityChoicePack.note,
+  "礼包内容可自选 永夜老荷兰 ×10 或 红钻 ×980",
+);
+const cityChoiceValue = calculatePackValue(
+  cityChoicePack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-09-24",
+    targetBanner: { id: "六周年庆典", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(cityChoiceValue.theoreticalPulls, 20);
+assert.equal(cityChoiceValue.pricePerPull, 4.9);
+assert.deepEqual(cityChoicePack.prerequisites, [cityRedDiamondPack.id]);
+
+assert.equal(anniversaryLuckyBagGroup.packs.length, 2);
+assert.equal(
+  anniversaryLuckyBagGroup.packs.every(
+    (pack) => pack.exclusiveGroup === "六周年-福袋",
+  ),
+  true,
+);
+const regularLuckyBag = anniversaryLuckyBagGroup.packs.find(
+  (pack) => pack.id === "六周年福袋·常规",
+);
+const premiumLuckyBag = anniversaryLuckyBagGroup.packs.find(
+  (pack) => pack.id === "六周年福袋·高阶",
+);
+assert.equal(
+  calculatePackValue(regularLuckyBag, 70.71, valuationRules)
+    .theoreticalPulls,
+  0,
+);
+assert.equal(
+  calculatePackValue(premiumLuckyBag, 70.71, valuationRules)
+    .theoreticalPulls,
+  12,
+);
+
 const deferredTestEventPack = {
   ...strangeEventPackData,
   startDate: "2026-09-02",
@@ -544,6 +737,37 @@ const afterEventEndDeferred = calculateEventPackDeferredRewards(
 assert.equal(afterEventEndDeferred.assumedPurchaseDate, "2026-09-03");
 assert.equal(afterEventEndDeferred.deliveredOccurrences, 5);
 assert.equal(afterEventEndDeferred.resources.common_paint, 5);
+
+const bundledPurchaseDayDeferred = calculateEventPackDeferredRewards(
+  anniversarySecondGroup,
+  bundledDailyPack,
+  1,
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(bundledPurchaseDayDeferred.deliveredOccurrences, 1);
+assert.equal(bundledPurchaseDayDeferred.resources.common_paint, 1);
+assert.equal(bundledPurchaseDayDeferred.resources.diamond, 20);
+const bundledPartialDeferred = calculateEventPackDeferredRewards(
+  anniversarySecondGroup,
+  bundledDailyPack,
+  1,
+  "2026-09-24",
+  "2026-09-26",
+);
+assert.equal(bundledPartialDeferred.deliveredOccurrences, 3);
+assert.equal(bundledPartialDeferred.resources.common_paint, 3);
+assert.equal(bundledPartialDeferred.resources.diamond, 60);
+const bundledFullDeferred = calculateEventPackDeferredRewards(
+  anniversarySecondGroup,
+  bundledDailyPack,
+  1,
+  "2026-09-24",
+  "2026-10-13",
+);
+assert.equal(bundledFullDeferred.deliveredOccurrences, 19);
+assert.equal(bundledFullDeferred.resources.common_paint, 19);
+assert.equal(bundledFullDeferred.resources.diamond, 380);
 
 const secondDisplayPack = {
   ...eventPackData,
@@ -753,6 +977,297 @@ const triggerPurchase = updatePurchase(
 assert.equal(triggerPurchase.valid, true);
 assert.equal(triggerPurchase.purchases["庄园推送礼·第5"].selected, true);
 
+const exclusiveBasePack = {
+  price: 1,
+  countsTowardLimitedRecharge: true,
+  purchaseRule: { type: "total", limit: 1 },
+  contents: [{ resourceId: "diamond", amount: 1 }],
+  otherContents: [],
+  prerequisites: [],
+  trigger: null,
+  deferredRewards: [],
+};
+const exclusiveFixture = {
+  id: "exclusive-fixture",
+  name: "互斥测试分组",
+  eventId: "exclusive-fixture-event",
+  startDate: "2026-09-24",
+  endDate: "2026-10-12",
+  packs: [
+    {
+      ...exclusiveBasePack,
+      id: "exclusive-a",
+      name: "互斥 A",
+      exclusiveGroup: "group-one",
+    },
+    {
+      ...exclusiveBasePack,
+      id: "exclusive-b",
+      name: "互斥 B",
+      exclusiveGroup: "group-one",
+    },
+    {
+      ...exclusiveBasePack,
+      id: "exclusive-c",
+      name: "互斥 C",
+      exclusiveGroup: "group-two",
+    },
+  ],
+};
+let exclusivePurchases = createEventPackPurchaseState([
+  exclusiveFixture,
+])[exclusiveFixture.id];
+let exclusiveUpdate = updateEventPackPurchase(
+  exclusiveFixture,
+  exclusivePurchases,
+  "exclusive-a",
+  true,
+  1,
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(exclusiveUpdate.valid, true);
+exclusivePurchases = exclusiveUpdate.purchases;
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    exclusiveFixture,
+    exclusivePurchases,
+    "exclusive-a",
+  ),
+  false,
+);
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    exclusiveFixture,
+    exclusivePurchases,
+    "exclusive-b",
+  ),
+  true,
+);
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    exclusiveFixture,
+    exclusivePurchases,
+    "exclusive-c",
+  ),
+  false,
+);
+const blockedExclusiveUpdate = updateEventPackPurchase(
+  exclusiveFixture,
+  exclusivePurchases,
+  "exclusive-b",
+  true,
+  1,
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(blockedExclusiveUpdate.valid, false);
+assert.equal(blockedExclusiveUpdate.purchases["exclusive-a"].selected, true);
+assert.equal(blockedExclusiveUpdate.purchases["exclusive-b"].selected, false);
+exclusiveUpdate = updateEventPackPurchase(
+  exclusiveFixture,
+  exclusivePurchases,
+  "exclusive-c",
+  true,
+  1,
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(exclusiveUpdate.valid, true);
+exclusivePurchases = exclusiveUpdate.purchases;
+exclusiveUpdate = updateEventPackPurchase(
+  exclusiveFixture,
+  exclusivePurchases,
+  "exclusive-a",
+  false,
+  0,
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(exclusiveUpdate.valid, true);
+exclusivePurchases = exclusiveUpdate.purchases;
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    exclusiveFixture,
+    exclusivePurchases,
+    "exclusive-b",
+  ),
+  false,
+);
+exclusiveUpdate = updateEventPackPurchase(
+  exclusiveFixture,
+  exclusivePurchases,
+  "exclusive-b",
+  true,
+  1,
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(exclusiveUpdate.valid, true);
+
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    eventPackData,
+    createEventPackPurchaseState([eventPackData])[eventPackData.id],
+    "庄园画材大礼包",
+  ),
+  false,
+);
+assert.equal(
+  getEventPackMaximumQuantity(
+    dailyPack,
+    anniversarySecondGroup,
+    "2026-09-24",
+    "2026-10-12",
+  ),
+  19,
+);
+let actualDailyPurchases = createEventPackPurchaseState([
+  anniversarySecondGroup,
+])[anniversarySecondGroup.id];
+const actualDailyUpdate = updateEventPackPurchase(
+  anniversarySecondGroup,
+  actualDailyPurchases,
+  dailyPack.id,
+  true,
+  19,
+  "2026-09-24",
+  "2026-10-12",
+);
+assert.equal(actualDailyUpdate.valid, true);
+actualDailyPurchases = actualDailyUpdate.purchases;
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    anniversarySecondGroup,
+    actualDailyPurchases,
+    bundledDailyPack.id,
+  ),
+  true,
+);
+assert.equal(
+  updateEventPackPurchase(
+    anniversarySecondGroup,
+    actualDailyPurchases,
+    bundledDailyPack.id,
+    true,
+    1,
+    "2026-09-24",
+    "2026-10-12",
+  ).valid,
+  false,
+);
+
+let luckyBagPurchases = createEventPackPurchaseState([
+  anniversaryLuckyBagGroup,
+])[anniversaryLuckyBagGroup.id];
+const luckyBagUpdate = updateEventPackPurchase(
+  anniversaryLuckyBagGroup,
+  luckyBagPurchases,
+  regularLuckyBag.id,
+  true,
+  1,
+  "2026-09-17",
+  "2026-10-12",
+);
+assert.equal(luckyBagUpdate.valid, true);
+luckyBagPurchases = luckyBagUpdate.purchases;
+assert.equal(
+  isEventPackExclusiveGroupOccupied(
+    anniversaryLuckyBagGroup,
+    luckyBagPurchases,
+    premiumLuckyBag.id,
+  ),
+  true,
+);
+
+let cityChoicePurchases = createEventPackPurchaseState([
+  anniversarySecondGroup,
+])[anniversarySecondGroup.id];
+assert.equal(
+  updateEventPackPurchase(
+    anniversarySecondGroup,
+    cityChoicePurchases,
+    cityChoicePack.id,
+    true,
+    1,
+    "2026-09-24",
+    "2026-10-12",
+  ).valid,
+  false,
+);
+const cityRedDiamondUpdate = updateEventPackPurchase(
+  anniversarySecondGroup,
+  cityChoicePurchases,
+  cityRedDiamondPack.id,
+  true,
+  1,
+  "2026-09-24",
+  "2026-10-12",
+);
+assert.equal(cityRedDiamondUpdate.valid, true);
+cityChoicePurchases = cityRedDiamondUpdate.purchases;
+const cityChoiceUpdate = updateEventPackPurchase(
+  anniversarySecondGroup,
+  cityChoicePurchases,
+  cityChoicePack.id,
+  true,
+  1,
+  "2026-09-24",
+  "2026-10-12",
+);
+assert.equal(cityChoiceUpdate.valid, true);
+cityChoicePurchases = cityChoiceUpdate.purchases;
+const cityChoiceSummary = calculateEventPackPurchaseSummary(
+  [anniversarySecondGroup],
+  { [anniversarySecondGroup.id]: cityChoicePurchases },
+  "2026-09-24",
+  "2026-10-12",
+);
+assert.equal(cityChoiceSummary.valid, true);
+assert.equal(cityChoiceSummary.resources.common_paint, 10);
+assert.equal(
+  cityChoiceSummary.resources["limited-paint-永夜老荷兰"],
+  10,
+);
+
+const invalidExclusiveSummary = calculateEventPackPurchaseSummary(
+  [exclusiveFixture],
+  {
+    [exclusiveFixture.id]: {
+      "exclusive-a": { selected: true, quantity: 1 },
+      "exclusive-b": { selected: true, quantity: 1 },
+      "exclusive-c": { selected: false, quantity: 0 },
+    },
+  },
+  "2026-09-24",
+  "2026-09-24",
+);
+assert.equal(invalidExclusiveSummary.valid, false);
+assert.equal(invalidExclusiveSummary.totalPrice, 0);
+assert.deepEqual(
+  Object.fromEntries(Object.entries(invalidExclusiveSummary.resources)),
+  {},
+);
+const invalidExclusiveRecharge = calculateEventPackLimitedRechargeRmb(
+  [exclusiveFixture],
+  {
+    [exclusiveFixture.id]: {
+      "exclusive-a": { selected: true, quantity: 1 },
+      "exclusive-b": { selected: true, quantity: 1 },
+      "exclusive-c": { selected: false, quantity: 0 },
+    },
+  },
+  "2026-09-24",
+  "2026-09-24",
+  {
+    id: "test-recharge",
+    startDate: "2026-09-24",
+    endDate: "2026-09-24",
+  },
+);
+assert.equal(invalidExclusiveRecharge.valid, false);
+assert.equal(invalidExclusiveRecharge.amount, 0);
+
 let summaryState = createEventPackPurchaseState([eventPackData]);
 let summaryUpdate = updatePurchase(
   summaryState[eventPackData.id],
@@ -895,6 +1410,28 @@ const validTestPack = {
   trigger: null,
   deferredRewards: [],
 };
+assert.equal(isValidEventPackItem(validTestPack, validResourceIds), true);
+assert.equal(
+  isValidEventPackItem(
+    { ...validTestPack, exclusiveGroup: "test-group" },
+    validResourceIds,
+  ),
+  true,
+);
+assert.equal(
+  isValidEventPackItem(
+    { ...validTestPack, exclusiveGroup: "" },
+    validResourceIds,
+  ),
+  false,
+);
+assert.equal(
+  isValidEventPackItem(
+    { ...validTestPack, exclusiveGroup: 1 },
+    validResourceIds,
+  ),
+  false,
+);
 const validRandomContents = [
   {
     probability: 0.5,

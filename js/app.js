@@ -1076,6 +1076,20 @@ function formatEventPackGroupDateRange(startDate, endDate) {
   return `${format(startDate)}-${format(endDate)}`;
 }
 
+function formatEventPackExclusiveGroupMessage(eventPack, pack) {
+  const otherPackNames = eventPack.packs
+    .filter(
+      (item) =>
+        item.id !== pack.id &&
+        item.exclusiveGroup === pack.exclusiveGroup,
+    )
+    .map((item) => `「${item.name}」`);
+
+  return otherPackNames.length > 0
+    ? `互斥购买：与${otherPackNames.join("")}仅可购买其一`
+    : "";
+}
+
 function updatePackValuationRate(rawValue) {
   packValuationState.redDiamondPerPull = Number(rawValue);
 
@@ -1121,7 +1135,15 @@ function createEventPackCard(eventPack, valueResult, purchases) {
   const prerequisitesSatisfied = pack.prerequisites.every(
     (prerequisiteId) => purchases[prerequisiteId]?.selected,
   );
-  const disabled = maximumQuantity === 0 || !prerequisitesSatisfied;
+  const exclusiveGroupOccupied = isEventPackExclusiveGroupOccupied(
+    eventPack,
+    purchases,
+    pack.id,
+  );
+  const disabled =
+    maximumQuantity === 0 ||
+    !prerequisitesSatisfied ||
+    exclusiveGroupOccupied;
   const card = document.createElement("article");
   const header = document.createElement("header");
   const heading = document.createElement("h4");
@@ -1190,10 +1212,26 @@ function createEventPackCard(eventPack, valueResult, purchases) {
     card.append(prerequisites);
   }
 
+  if (pack.exclusiveGroup) {
+    const exclusiveGroup = document.createElement("p");
+    const message = formatEventPackExclusiveGroupMessage(eventPack, pack);
+
+    if (message) {
+      exclusiveGroup.textContent = message;
+      card.append(exclusiveGroup);
+    }
+  }
+
   if (pack.trigger !== null) {
     const trigger = document.createElement("p");
     trigger.textContent = `抽卡达到 ${pack.trigger.value} 次后触发`;
     card.append(trigger);
+  }
+
+  if (typeof pack.note === "string" && pack.note.trim() !== "") {
+    const note = document.createElement("p");
+    note.textContent = pack.note;
+    card.append(note);
   }
 
   pack.deferredRewards.forEach((reward) => {
@@ -1373,6 +1411,9 @@ function updateEventPacksResult() {
   eventPackPurchaseState.purchases = summary.purchaseState;
   eventPackPurchaseState.resources = summary.resources;
   eventPackPurchaseState.totalPrice = summary.totalPrice;
+  if (!summary.valid) {
+    eventPackView.error.textContent = summary.error;
+  }
   updatePreConversionSummaryResult();
   const displayableEventPacks = getDisplayableEventPacks(
     eventPacks,

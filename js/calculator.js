@@ -1018,6 +1018,43 @@ function createEventPackPurchaseState(eventPacks) {
   );
 }
 
+function isEventPackExclusiveGroupOccupied(
+  eventPack,
+  purchases,
+  packId,
+) {
+  const pack = eventPack.packs.find((item) => item.id === packId);
+
+  if (!pack?.exclusiveGroup) {
+    return false;
+  }
+
+  return eventPack.packs.some(
+    (item) =>
+      item.id !== packId &&
+      item.exclusiveGroup === pack.exclusiveGroup &&
+      purchases?.[item.id]?.selected === true,
+  );
+}
+
+function getEventPackExclusiveGroupConflict(eventPack, purchases) {
+  const selectedGroups = new Set();
+
+  for (const pack of eventPack.packs) {
+    if (!pack.exclusiveGroup || !purchases?.[pack.id]?.selected) {
+      continue;
+    }
+
+    if (selectedGroups.has(pack.exclusiveGroup)) {
+      return pack.exclusiveGroup;
+    }
+
+    selectedGroups.add(pack.exclusiveGroup);
+  }
+
+  return null;
+}
+
 function normalizeEventPackPurchases(
   eventPack,
   purchases,
@@ -1114,6 +1151,20 @@ function updateEventPackPurchase(
     targetDate,
   );
 
+  if (
+    isEventPackExclusiveGroupOccupied(
+      eventPack,
+      currentPurchases,
+      packId,
+    )
+  ) {
+    return {
+      valid: false,
+      error: "同组礼包只能选择一种。",
+      purchases: currentPurchases,
+    };
+  }
+
   if (!prerequisitesSatisfied) {
     return {
       valid: false,
@@ -1145,17 +1196,38 @@ function calculateEventPackPurchaseSummary(
   targetDate,
 ) {
   const resources = {};
-  const normalizedState = {};
+  const normalizedState = Object.fromEntries(
+    eventPacks.map((eventPack) => [
+      eventPack.id,
+      normalizeEventPackPurchases(
+        eventPack,
+        purchaseState?.[eventPack.id],
+        currentDate,
+        targetDate,
+      ),
+    ]),
+  );
   let totalPrice = 0;
 
-  eventPacks.forEach((eventPack) => {
-    const purchases = normalizeEventPackPurchases(
+  for (const eventPack of eventPacks) {
+    const conflict = getEventPackExclusiveGroupConflict(
       eventPack,
-      purchaseState?.[eventPack.id],
-      currentDate,
-      targetDate,
+      normalizedState[eventPack.id],
     );
-    normalizedState[eventPack.id] = purchases;
+
+    if (conflict !== null) {
+      return {
+        valid: false,
+        error: "同组礼包存在多个已选项目。",
+        totalPrice: 0,
+        resources: {},
+        purchaseState: normalizedState,
+      };
+    }
+  }
+
+  eventPacks.forEach((eventPack) => {
+    const purchases = normalizedState[eventPack.id];
 
     eventPack.packs.forEach((pack) => {
       const quantity = purchases[pack.id].quantity;
@@ -1189,6 +1261,8 @@ function calculateEventPackPurchaseSummary(
   });
 
   return {
+    valid: true,
+    error: null,
     totalPrice,
     resources,
     purchaseState: normalizedState,
@@ -1341,6 +1415,19 @@ function calculateEventPackLimitedRechargeRmb(
   const mainRange = { startDate: currentDate, endDate: targetDate };
 
   for (const eventPack of eventPacks) {
+    if (
+      getEventPackExclusiveGroupConflict(
+        eventPack,
+        purchaseState?.[eventPack.id],
+      ) !== null
+    ) {
+      return {
+        valid: false,
+        error: "同组礼包存在多个已选项目。",
+        amount: 0,
+      };
+    }
+
     const rechargeIntersection = calculateInclusiveDateIntersection([
       eventPack,
       rechargeEvent,
