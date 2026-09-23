@@ -605,8 +605,8 @@ function calculateSelectedEventIncome(
   };
 }
 
-function calculatePackValue(
-  pack,
+function calculateContentsTheoreticalPulls(
+  contents,
   redDiamondPerPull,
   rules,
   {
@@ -615,29 +615,6 @@ function calculatePackValue(
     resourceInstances = [],
   } = {},
 ) {
-  if (
-    typeof redDiamondPerPull !== "number" ||
-    !Number.isFinite(redDiamondPerPull) ||
-    redDiamondPerPull <= 0
-  ) {
-    return { valid: false, error: "红钻理论折算率必须大于 0。" };
-  }
-
-  const immediateContents = Array.isArray(pack.contents)
-    ? pack.contents
-    : Object.entries(pack.contents).map(([resourceId, amount]) => ({
-        resourceId,
-        amount,
-      }));
-  const deferredContents = (pack.deferredRewards ?? []).flatMap((reward) =>
-    reward.type === "relative_daily" && Array.isArray(reward.contents)
-      ? reward.contents.map(({ resourceId, amount }) => ({
-          resourceId,
-          amount: amount * reward.days,
-        }))
-      : [],
-  );
-  const contents = [...immediateContents, ...deferredContents];
   const resourceInstancesById = new Map(
     resourceInstances.map((resource) => [resource.id, resource]),
   );
@@ -673,6 +650,64 @@ function calculatePackValue(
       theoreticalPulls += amount;
     }
   });
+
+  return theoreticalPulls;
+}
+
+function calculatePackValue(
+  pack,
+  redDiamondPerPull,
+  rules,
+  options = {},
+) {
+  if (
+    typeof redDiamondPerPull !== "number" ||
+    !Number.isFinite(redDiamondPerPull) ||
+    redDiamondPerPull <= 0
+  ) {
+    return { valid: false, error: "红钻理论折算率必须大于 0。" };
+  }
+
+  const immediateContents = Array.isArray(pack.contents)
+    ? pack.contents
+    : Object.entries(pack.contents).map(([resourceId, amount]) => ({
+        resourceId,
+        amount,
+      }));
+  const deferredContents = (pack.deferredRewards ?? []).flatMap((reward) =>
+    reward.type === "relative_daily" && Array.isArray(reward.contents)
+      ? reward.contents.map(({ resourceId, amount }) => ({
+          resourceId,
+          amount: amount * reward.days,
+        }))
+      : [],
+  );
+  const immediatePulls = calculateContentsTheoreticalPulls(
+    immediateContents,
+    redDiamondPerPull,
+    rules,
+    options,
+  );
+  const deferredPulls = calculateContentsTheoreticalPulls(
+    deferredContents,
+    redDiamondPerPull,
+    rules,
+    options,
+  );
+  const expectedRandomPulls = (pack.randomContents ?? []).reduce(
+    (total, outcome) =>
+      total +
+      outcome.probability *
+        calculateContentsTheoreticalPulls(
+          outcome.contents,
+          redDiamondPerPull,
+          rules,
+          options,
+        ),
+    0,
+  );
+  const theoreticalPulls =
+    immediatePulls + deferredPulls + expectedRandomPulls;
 
   return {
     valid: true,

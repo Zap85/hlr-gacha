@@ -12,6 +12,7 @@ const PERMANENT_PACKS_PATH = "data/packs/permanent-packs.json";
 const EVENT_PACK_PATHS = [
   "data/packs/event-packs/庄园诡戏.json",
   "data/packs/event-packs/怪谈活动.json",
+  "data/packs/event-packs/六周年.json",
 ];
 const CURRENCY_PACK_PATHS = [
   "data/packs/currency-packs/庄园诡戏.json",
@@ -625,6 +626,48 @@ function isValidEventPackTrigger(trigger) {
   );
 }
 
+function isValidEventPackRandomContents(randomContents, validResourceIds) {
+  if (randomContents === undefined) {
+    return true;
+  }
+
+  if (!Array.isArray(randomContents) || randomContents.length === 0) {
+    return false;
+  }
+
+  let totalProbability = 0;
+
+  for (const outcome of randomContents) {
+    if (
+      outcome === null ||
+      typeof outcome !== "object" ||
+      typeof outcome.probability !== "number" ||
+      !Number.isFinite(outcome.probability) ||
+      outcome.probability <= 0 ||
+      outcome.probability > 1 ||
+      !Array.isArray(outcome.contents) ||
+      outcome.contents.length === 0 ||
+      !outcome.contents.every((content) =>
+        isValidEventPackContent(content, validResourceIds),
+      )
+    ) {
+      return false;
+    }
+
+    const resourceIds = new Set(
+      outcome.contents.map((content) => content.resourceId),
+    );
+
+    if (resourceIds.size !== outcome.contents.length) {
+      return false;
+    }
+
+    totalProbability += outcome.probability;
+  }
+
+  return Math.abs(totalProbability - 1) < 1e-9;
+}
+
 function isValidEventPackItem(pack, validResourceIds) {
   if (
     pack === null ||
@@ -653,6 +696,10 @@ function isValidEventPackItem(pack, validResourceIds) {
     !Array.isArray(pack.deferredRewards) ||
     !pack.deferredRewards.every((reward) =>
       isValidEventPackDeferredReward(reward, validResourceIds),
+    ) ||
+    !isValidEventPackRandomContents(
+      pack.randomContents,
+      validResourceIds,
     )
   ) {
     return false;
@@ -738,6 +785,7 @@ async function loadEventPacks(
   const eventPackIds = new Set();
 
   return eventPackData
+    .flatMap((data) => (Array.isArray(data) ? data : [data]))
     .map((eventPack) => sanitizeEventPack(eventPack, validResourceIds))
     .filter((eventPack) => {
       if (eventPack === null || eventPackIds.has(eventPack.id)) {

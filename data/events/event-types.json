@@ -24,13 +24,13 @@
       "id": "五人活动",
       "available": {
         "diamond": 300,
-        "common_paint": 1,
-        "timed_paint": 4
+        "common_paint": 3,
+        "timed_paint": 2
       },
       "complete": {
         "diamond": 1266,
-        "common_paint": 3,
-        "timed_paint": 14
+        "common_paint": 5,
+        "timed_paint": 12
       }
     },
     {

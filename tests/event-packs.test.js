@@ -19,6 +19,11 @@ const strangeEventPackData = JSON.parse(
     path.join("data", "packs", "event-packs", "怪谈活动.json"),
   ),
 );
+const anniversaryEventPackData = JSON.parse(
+  readProjectFile(
+    path.join("data", "packs", "event-packs", "六周年.json"),
+  ),
+);
 const eventPackTemplate = JSON.parse(
   readProjectFile(
     path.join(
@@ -43,6 +48,9 @@ const eventData = JSON.parse(
 );
 const packs = eventPackData.packs;
 const strangePacks = strangeEventPackData.packs;
+const anniversaryPacks = anniversaryEventPackData.flatMap(
+  (eventPack) => eventPack.packs,
+);
 const indexHtml = readProjectFile("index.html");
 const appSource = readProjectFile(path.join("js", "app.js"));
 
@@ -55,8 +63,7 @@ assert.equal(
 );
 assert.equal(eventPackData.startDate, "2026-08-26");
 assert.equal(eventPackData.endDate, "2026-09-02");
-assert.equal(packs.length, 19);
-assert.equal(new Set(packs.map((pack) => pack.id)).size, 19);
+assert.equal(new Set(packs.map((pack) => pack.id)).size, packs.length);
 assert.equal(
   packs.every((pack) => pack.countsTowardLimitedRecharge === true),
   true,
@@ -70,13 +77,56 @@ assert.equal(
 );
 assert.equal(strangeEventPackData.startDate, "2026-09-03");
 assert.equal(strangeEventPackData.endDate, "2026-09-09");
-assert.equal(strangePacks.length, 18);
-assert.equal(new Set(strangePacks.map((pack) => pack.id)).size, 18);
+assert.equal(
+  new Set(strangePacks.map((pack) => pack.id)).size,
+  strangePacks.length,
+);
 assert.equal(
   strangePacks.every(
     (pack) => pack.countsTowardLimitedRecharge === true,
   ),
   true,
+);
+assert.deepEqual(
+  anniversaryEventPackData.map((eventPack) => eventPack.id),
+  [
+    "年卡",
+    "六周年预热礼包",
+    "六周年活动礼包1",
+    "往昔回顾画廊触发礼包",
+    "绘忆时光",
+  ],
+);
+assert.equal(
+  anniversaryPacks.every(
+    (pack) => pack.countsTowardLimitedRecharge === true,
+  ),
+  true,
+);
+assert.equal(
+  anniversaryEventPackData.every((eventPack) =>
+    eventData.events.some((event) => event.id === eventPack.eventId),
+  ),
+  true,
+);
+assert.match(
+  appSource,
+  /formatEventPackGroupDateRange\(\s*eventPack\.startDate,\s*eventPack\.endDate,/,
+);
+assert.match(appSource, /期望抽数/);
+assert.match(appSource, /期望单抽价格/);
+const dateRangeFormatterSource = appSource.match(
+  /function formatEventPackGroupDateRange\([\s\S]*?\n}/,
+)?.[0];
+assert.notEqual(dateRangeFormatterSource, undefined);
+const dateRangeFormatterContext = vm.createContext({});
+vm.runInContext(dateRangeFormatterSource, dateRangeFormatterContext);
+assert.equal(
+  vm.runInContext(
+    'formatEventPackGroupDateRange("2026-09-19", "2026-10-12")',
+    dateRangeFormatterContext,
+  ),
+  "09.19-10.12",
 );
 assert.match(indexHtml, /<summary[^>]*>活动礼包<\/summary>/);
 assert.match(indexHtml, /<details class="pack-disclosure event-packs-disclosure">/);
@@ -363,6 +413,62 @@ assert.ok(
   Math.abs(strangeContinuousValue.pricePerPull - 28 / 6.8666666667) <
     1e-9,
 );
+
+const anniversaryWarmupGroup = anniversaryEventPackData.find(
+  (eventPack) => eventPack.id === "六周年预热礼包",
+);
+const luckyBox = anniversaryWarmupGroup.packs.find(
+  (pack) => pack.id === "周年幸运盒子",
+);
+const luckyValuePack = anniversaryWarmupGroup.packs.find(
+  (pack) => pack.id === "周年幸运超值包",
+);
+const luckyBoxValue = calculatePackValue(
+  luckyBox,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-09-23",
+    targetBanner: { id: "六周年庆典", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+const luckyValuePackValue = calculatePackValue(
+  luckyValuePack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-09-23",
+    targetBanner: { id: "六周年庆典", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.ok(
+  Math.abs(luckyBoxValue.theoreticalPulls - 0.8426666667) < 1e-9,
+);
+assert.ok(Math.abs(luckyBoxValue.pricePerPull - 7.1202531643) < 1e-9);
+assert.ok(
+  Math.abs(luckyValuePackValue.theoreticalPulls - 2.8426666667) <
+    1e-9,
+);
+assert.ok(
+  Math.abs(luckyValuePackValue.pricePerPull - 4.2213883677) < 1e-9,
+);
+
+const anniversaryContinuousPack = anniversaryWarmupGroup.packs.find(
+  (pack) => pack.id === "周年连续颜料箱",
+);
+const anniversaryContinuousValue = calculatePackValue(
+  anniversaryContinuousPack,
+  70.71,
+  valuationRules,
+  {
+    targetDate: "2026-09-23",
+    targetBanner: { id: "六周年庆典", tags: [] },
+    resourceInstances: resourceInstanceData.resources,
+  },
+);
+assert.equal(anniversaryContinuousValue.theoreticalPulls, 55);
 
 const deferredTestEventPack = {
   ...strangeEventPackData,
@@ -713,6 +819,33 @@ const partialStrangePurchaseSummary =
 assert.equal(partialStrangePurchaseSummary.resources.diamond, 280);
 assert.equal(partialStrangePurchaseSummary.resources.common_paint, 2);
 
+let anniversarySummaryState = createEventPackPurchaseState([
+  anniversaryWarmupGroup,
+]);
+const luckyBoxUpdate = updateEventPackPurchase(
+  anniversaryWarmupGroup,
+  anniversarySummaryState[anniversaryWarmupGroup.id],
+  luckyBox.id,
+  true,
+  1,
+  "2026-09-17",
+  "2026-09-17",
+);
+assert.equal(luckyBoxUpdate.valid, true);
+anniversarySummaryState[anniversaryWarmupGroup.id] =
+  luckyBoxUpdate.purchases;
+const luckyBoxPurchaseSummary = calculateEventPackPurchaseSummary(
+  [anniversaryWarmupGroup],
+  anniversarySummaryState,
+  "2026-09-17",
+  "2026-09-17",
+);
+assert.equal(luckyBoxPurchaseSummary.totalPrice, 6);
+assert.deepEqual(
+  Object.fromEntries(Object.entries(luckyBoxPurchaseSummary.resources)),
+  {},
+);
+
 const loaderContext = vm.createContext({ Date });
 vm.runInContext(
   readProjectFile(path.join("js", "data-loader.js")),
@@ -743,6 +876,12 @@ assert.equal(
   ),
   true,
 );
+assert.equal(
+  anniversaryPacks.every((pack) =>
+    isValidEventPackItem(pack, validResourceIds),
+  ),
+  true,
+);
 
 const validTestPack = {
   id: "valid-test-pack",
@@ -756,6 +895,77 @@ const validTestPack = {
   trigger: null,
   deferredRewards: [],
 };
+const validRandomContents = [
+  {
+    probability: 0.5,
+    contents: [{ resourceId: "diamond", amount: 60 }],
+  },
+  {
+    probability: 0.5,
+    contents: [{ resourceId: "common_paint", amount: 1 }],
+  },
+];
+assert.equal(
+  isValidEventPackItem(
+    { ...validTestPack, randomContents: validRandomContents },
+    validResourceIds,
+  ),
+  true,
+);
+assert.equal(
+  isValidEventPackItem(
+    {
+      ...validTestPack,
+      randomContents: validRandomContents.map((outcome, index) => ({
+        ...outcome,
+        probability: index === 0 ? 0.4 : 0.5,
+      })),
+    },
+    validResourceIds,
+  ),
+  false,
+);
+assert.equal(
+  isValidEventPackItem(
+    {
+      ...validTestPack,
+      randomContents: [
+        { probability: 0, contents: validRandomContents[0].contents },
+        validRandomContents[1],
+      ],
+    },
+    validResourceIds,
+  ),
+  false,
+);
+assert.equal(
+  isValidEventPackItem(
+    {
+      ...validTestPack,
+      randomContents: [{ probability: 1, contents: [] }],
+    },
+    validResourceIds,
+  ),
+  false,
+);
+assert.equal(
+  isValidEventPackItem(
+    {
+      ...validTestPack,
+      randomContents: [
+        {
+          probability: 1,
+          contents: [
+            { resourceId: "diamond", amount: 1 },
+            { resourceId: "diamond", amount: 2 },
+          ],
+        },
+      ],
+    },
+    validResourceIds,
+  ),
+  false,
+);
 const invalidEventPack = {
   id: "invalid-items-test",
   name: "无效单项测试",
@@ -801,6 +1011,10 @@ const secondEventPack = {
   eventId: "sample-second-event",
   packs: [],
 };
+const duplicateSecondEventPack = {
+  ...secondEventPack,
+  name: "重复活动礼包分组",
+};
 const requestedPaths = [];
 loaderContext.fetch = async (requestedPath) => {
   requestedPaths.push(requestedPath);
@@ -810,8 +1024,14 @@ loaderContext.fetch = async (requestedPath) => {
     "data/resources/resources.json": resourceInstanceData,
     "data/packs/event-packs/庄园诡戏.json": eventPackData,
     "data/packs/event-packs/怪谈活动.json": strangeEventPackData,
+    "data/packs/event-packs/六周年.json": anniversaryEventPackData,
     "event-pack-one.json": eventPackData,
     "event-pack-two.json": secondEventPack,
+    "event-pack-array.json": [
+      secondEventPack,
+      duplicateSecondEventPack,
+      ...anniversaryEventPackData,
+    ],
   };
 
   return {
@@ -826,15 +1046,33 @@ loaderContext.fetch = async (requestedPath) => {
     "event-pack-one.json",
     "event-pack-two.json",
   ]);
+  const arrayLoaded = await loadEventPacks(["event-pack-array.json"]);
 
-  assert.equal(defaultLoaded.length, 2);
-  assert.equal(defaultLoaded[0].id, "庄园诡戏礼包");
-  assert.equal(defaultLoaded[1].id, "怪谈活动");
+  const defaultLoadedIds = new Set(defaultLoaded.map(({ id }) => id));
+  assert.equal(defaultLoadedIds.has("庄园诡戏礼包"), true);
+  assert.equal(defaultLoadedIds.has("怪谈活动"), true);
+  anniversaryEventPackData.forEach(({ id }) => {
+    assert.equal(defaultLoadedIds.has(id), true);
+  });
   assert.equal(loaded.length, 2);
-  assert.equal(loaded[0].packs.length, 19);
-  assert.equal(loaded[1].id, "sample-second-event-pack");
+  assert.equal(
+    loaded.some(({ id }) => id === eventPackData.id),
+    true,
+  );
+  assert.equal(
+    loaded.some(({ id }) => id === secondEventPack.id),
+    true,
+  );
+  assert.equal(
+    arrayLoaded.filter(({ id }) => id === secondEventPack.id).length,
+    1,
+  );
+  anniversaryEventPackData.forEach(({ id }) => {
+    assert.equal(arrayLoaded.some((eventPack) => eventPack.id === id), true);
+  });
   assert.equal(requestedPaths.includes("event-pack-one.json"), true);
   assert.equal(requestedPaths.includes("event-pack-two.json"), true);
+  assert.equal(requestedPaths.includes("event-pack-array.json"), true);
   console.log("event packs: data and loader validation tests passed");
 })().catch((error) => {
   console.error(error);

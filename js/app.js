@@ -1061,6 +1061,21 @@ function formatEventPackOtherContents(contents) {
     .join("，");
 }
 
+function formatEventPackRandomContents(randomContents) {
+  return randomContents
+    .map(({ probability, contents }) => {
+      const reward = formatEventPackContents(contents);
+      const percentage = `${Number((probability * 100).toFixed(10))}%`;
+      return `${reward}（${percentage}）`;
+    })
+    .join("，");
+}
+
+function formatEventPackGroupDateRange(startDate, endDate) {
+  const format = (date) => date.slice(5).replace("-", ".");
+  return `${format(startDate)}-${format(endDate)}`;
+}
+
 function updatePackValuationRate(rawValue) {
   packValuationState.redDiamondPerPull = Number(rawValue);
 
@@ -1137,14 +1152,25 @@ function createEventPackCard(eventPack, valueResult, purchases) {
     card.append(otherContents);
   }
 
+  if (Array.isArray(pack.randomContents) && pack.randomContents.length > 0) {
+    const randomContents = document.createElement("p");
+    randomContents.textContent =
+      `随机奖励：${formatEventPackRandomContents(pack.randomContents)}`;
+    card.append(randomContents);
+  }
+
   valueSummary.className = "permanent-pack-value-summary";
+  const hasRandomContents =
+    Array.isArray(pack.randomContents) && pack.randomContents.length > 0;
+  const pullsLabel = hasRandomContents ? "期望抽数" : "理论抽数";
+  const priceLabel = hasRandomContents ? "期望单抽价格" : "单抽价格";
   theoreticalPulls.textContent = valueResult.valid
-    ? `理论抽数：${valueResult.theoreticalPulls.toFixed(2)}`
-    : "理论抽数：—";
+    ? `${pullsLabel}：${valueResult.theoreticalPulls.toFixed(2)}`
+    : `${pullsLabel}：—`;
   pricePerPull.textContent =
     valueResult.valid && valueResult.pricePerPull !== null
-      ? `单抽价格：¥${valueResult.pricePerPull.toFixed(2)}`
-      : "单抽价格：—";
+      ? `${priceLabel}：¥${valueResult.pricePerPull.toFixed(2)}`
+      : `${priceLabel}：—`;
   valueSummary.append(theoreticalPulls, pricePerPull);
   card.append(valueSummary);
 
@@ -1283,7 +1309,11 @@ function renderEventPackGroups(displayableEventPacks) {
     group.className = "event-pack-group";
     group.setAttribute("aria-labelledby", headingId);
     heading.id = headingId;
-    heading.textContent = eventPack.name;
+    heading.textContent =
+      `${eventPack.name}（${formatEventPackGroupDateRange(
+        eventPack.startDate,
+        eventPack.endDate,
+      )}）`;
     list.className = "event-pack-card-grid";
     const packValues = eventPack.packs.map((pack) => ({
       ...calculatePackValue(

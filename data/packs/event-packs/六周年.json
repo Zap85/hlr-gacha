@@ -1,0 +1,449 @@
+[
+  {
+    "id": "年卡",
+    "name": "年卡",
+    "eventId": "六周年预热",
+    "startDate": "2026-09-17",
+    "endDate": "2026-09-23",
+    "packs": [
+      {
+        "id": "罐罐计划",
+        "name": "罐罐计划",
+        "price": 98,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 10 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "猫条计划",
+        "name": "猫条计划",
+        "price": 18,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "diamond", "amount": 180 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "六周年预热礼包",
+    "name": "六周年预热礼包",
+    "eventId": "六周年预热",
+    "startDate": "2026-09-17",
+    "endDate": "2026-09-23",
+    "packs": [
+      {
+        "id": "周年幸运盒子",
+        "name": "周年幸运盒子",
+        "price": 6,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "daily", "limit": 3 },
+        "contents": [],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [],
+        "randomContents": [
+          {
+            "probability": 0.44,
+            "contents": [
+              { "resourceId": "diamond", "amount": 60 }
+            ]
+          },
+          {
+            "probability": 0.35,
+            "contents": [
+              { "resourceId": "diamond", "amount": 120 }
+            ]
+          },
+          {
+            "probability": 0.1,
+            "contents": [
+              { "resourceId": "diamond", "amount": 280 }
+            ]
+          },
+          {
+            "probability": 0.1,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 1 }
+            ]
+          },
+          {
+            "probability": 0.01,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 10 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "周年幸运超值包",
+        "name": "周年幸运超值包",
+        "price": 12,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 2 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [],
+        "randomContents": [
+          {
+            "probability": 0.44,
+            "contents": [
+              { "resourceId": "diamond", "amount": 60 }
+            ]
+          },
+          {
+            "probability": 0.35,
+            "contents": [
+              { "resourceId": "diamond", "amount": 120 }
+            ]
+          },
+          {
+            "probability": 0.1,
+            "contents": [
+              { "resourceId": "diamond", "amount": 280 }
+            ]
+          },
+          {
+            "probability": 0.1,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 1 }
+            ]
+          },
+          {
+            "probability": 0.01,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 10 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "6周年颜料启动礼",
+        "name": "6周年颜料启动礼",
+        "price": 35,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 3 },
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 5 }
+        ],
+        "otherContents": [
+          { "name": "提神番茄饮", "amount": 5 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "周年十连快乐盒",
+        "name": "周年十连快乐盒",
+        "price": 68,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 10 }
+        ],
+        "otherContents": [
+          { "name": "快乐收藏盲盒", "amount": 6 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "6周年颜料超值礼",
+        "name": "6周年颜料超值礼",
+        "price": 73,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 6 },
+          { "resourceId": "limited-paint-昔年老荷兰", "amount": 16 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "异域庆礼纪念包",
+        "name": "异域庆礼纪念包",
+        "price": 28,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 3 }
+        ],
+        "otherContents": [
+          { "name": "头像框", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "周年连续颜料箱",
+        "name": "周年连续颜料箱",
+        "price": 328,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 10 }
+        ],
+        "otherContents": [
+          { "name": "星尘之铃·破", "amount": 10 },
+          { "name": "金币", "amount": 9999 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": [
+          {
+            "type": "relative_daily",
+            "startOffsetDays": 1,
+            "days": 9,
+            "intervalDays": 1,
+            "contents": [
+              { "resourceId": "common_paint", "amount": 5 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "周年限定画灵特训包",
+        "name": "周年限定画灵特训包",
+        "price": 45,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "diamond", "amount": 450 }
+        ],
+        "otherContents": [
+          { "name": "画灵特训卡", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "周年限定画灵提升盒",
+        "name": "周年限定画灵提升盒",
+        "price": 45,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [
+          { "name": "星尘之铃·破", "amount": 455 },
+          { "name": "金币", "amount": 255000 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "并肩年少自选礼包",
+        "name": "并肩年少自选礼包",
+        "price": 50,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 5 },
+        "contents": [],
+        "otherContents": [
+          { "name": "五位男主服装五选一", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "并肩少年套组礼包",
+        "name": "并肩少年套组礼包",
+        "price": 238,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [
+          { "name": "五位男主服装", "amount": 5 },
+          { "name": "出行地点·螺螺星球", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "六周年活动礼包1",
+    "name": "六周年活动礼包1",
+    "eventId": "六周年庆典",
+    "startDate": "2026-09-19",
+    "endDate": "2026-10-12",
+    "packs": [
+      {
+        "id": "周年预热每日礼包",
+        "name": "周年预热每日礼包",
+        "price": 6,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "daily", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 1 },
+          { "resourceId": "diamond", "amount": 20 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "身体锻炼单人包",
+        "name": "身体锻炼单人包",
+        "price": 12,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 5 },
+        "contents": [],
+        "otherContents": [
+          { "name": "开屏-身体锻炼 单人", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "身体锻炼组合包",
+        "name": "身体锻炼组合包",
+        "price": 88,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 15 }
+        ],
+        "otherContents": [
+          { "name": "身体锻炼开屏", "amount": 5 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "周年典藏收藏箱",
+        "name": "周年典藏收藏箱",
+        "price": 128,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "common_paint", "amount": 20 },
+          { "resourceId": "diamond", "amount": 256 }
+        ],
+        "otherContents": [
+          { "name": "鸽子券", "amount": 20 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "往昔回顾画廊触发礼包",
+    "name": "往昔回顾画廊触发礼包",
+    "eventId": "六周年预热",
+    "startDate": "2026-09-17",
+    "endDate": "2026-09-27",
+    "packs": [
+      {
+        "id": "昔年之拥颜料礼",
+        "name": "昔年之拥颜料礼",
+        "price": 8,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-昔年老荷兰", "amount": 2 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 10 },
+        "deferredRewards": []
+      },
+      {
+        "id": "昔年之拥颜料礼II",
+        "name": "昔年之拥颜料礼II",
+        "price": 28,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-昔年老荷兰", "amount": 6 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 30 },
+        "deferredRewards": []
+      },
+      {
+        "id": "昔年之拥颜料礼III",
+        "name": "昔年之拥颜料礼III",
+        "price": 45,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-昔年老荷兰", "amount": 8 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 50 },
+        "deferredRewards": []
+      },
+      {
+        "id": "昔年之拥颜料礼IV",
+        "name": "昔年之拥颜料礼IV",
+        "price": 60,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-昔年老荷兰", "amount": 15 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": { "type": "pull_count", "value": 120 },
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "绘忆时光",
+    "name": "绘忆时光",
+    "eventId": "六周年预热",
+    "startDate": "2026-09-19",
+    "endDate": "2026-09-25",
+    "packs": [
+      {
+        "id": "绘忆时光礼盒",
+        "name": "绘忆时光礼盒",
+        "price": 98,
+        "countsTowardLimitedRecharge": true,
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [
+          { "name": "绘图卡自选", "amount": 1 },
+          { "name": "油画棒", "amount": 20 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  }
+]

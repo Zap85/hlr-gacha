@@ -81,14 +81,25 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(fivePersonEventType)),
   {
     id: "五人活动",
-    available: { diamond: 300, common_paint: 1, timed_paint: 4 },
-    complete: { diamond: 1266, common_paint: 3, timed_paint: 14 },
+    available: { diamond: 300, common_paint: 3, timed_paint: 2 },
+    complete: { diamond: 1266, common_paint: 5, timed_paint: 12 },
   },
 );
 assert.equal(anniversaryWarmup.type, "五人活动");
 assert.equal(anniversaryWarmup.startDate, "2026-09-19");
 assert.equal(anniversaryWarmup.endDate, "2026-10-12");
+assert.deepEqual(
+  JSON.parse(JSON.stringify(anniversaryWarmup.incomeAdjustment)),
+  {
+    available: { diamond: -140, common_paint: -2, timed_paint: 15 },
+    complete: { diamond: -1106, common_paint: -4, timed_paint: 5 },
+  },
+);
 assert.equal(anniversaryCelebration.type, "五人活动");
+assert.deepEqual(
+  JSON.parse(JSON.stringify(anniversaryCelebration.incomeAdjustment)),
+  { available: {}, complete: {} },
+);
 assert.equal(anniversaryWineCard.type, "持续签到活动");
 assert.equal(anniversaryWineCard.startDate, "2026-09-20");
 assert.equal(anniversaryWineCard.endDate, "2026-10-23");
@@ -287,11 +298,11 @@ const celebrationComplete = calculateEventIncome(
 );
 assert.deepEqual(
   JSON.parse(JSON.stringify(celebrationAvailable.resources)),
-  { diamond: 300, common_paint: 1, timed_paint: 4 },
+  { diamond: 300, common_paint: 3, timed_paint: 2 },
 );
 assert.deepEqual(
   JSON.parse(JSON.stringify(celebrationComplete.resources)),
-  { diamond: 1266, common_paint: 3, timed_paint: 14 },
+  { diamond: 1266, common_paint: 5, timed_paint: 12 },
 );
 
 const unclaimedInWindow = calculateEventIncome(

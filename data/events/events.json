@@ -53,13 +53,13 @@
       "incomeAdjustment": {
         "available": {
           "diamond": -140,
-          "common_paint": 0,
-          "timed_paint": 13
+          "common_paint": -2,
+          "timed_paint": 15
         },
         "complete": {
           "diamond": -1106,
-          "common_paint": -2,
-          "timed_paint": 3
+          "common_paint": -4,
+          "timed_paint": 5
         }
       },
       "exchanges": []
