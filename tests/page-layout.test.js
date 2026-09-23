@@ -38,6 +38,8 @@ assert.match(indexHtml, /class="calculator-workflow"/);
 assert.match(indexHtml, /href="docs\/user-guide\.css"/);
 assert.match(indexHtml, /id="user-guide-toggle"[^>]*aria-haspopup="dialog"[^>]*>使用说明<\/button>/);
 assert.match(indexHtml, /id="update-guide-toggle"[^>]*aria-haspopup="dialog"[^>]*data-guide-source="docs\/update-guide\.html"[^>]*>更新说明<\/button>/);
+assert.match(indexHtml, /href="https:\/\/www\.bilibili\.com\/opus\/1242727484105949232\?spm_id_from=333\.1387\.0\.0" target="_blank" rel="noopener noreferrer">B站 @ギルド_<\/a>/);
+assert.match(indexHtml, /小红书 @ZAP85/);
 assert.match(indexHtml, /id="user-guide-modal"[^>]*hidden>/);
 assert.match(indexHtml, /class="user-guide-dialog" role="dialog" aria-modal="true" aria-label="使用说明"/);
 assert.match(indexHtml, /id="user-guide-close"[^>]*aria-label="关闭使用说明"[^>]*>×<\/button>/);

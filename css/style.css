@@ -21,6 +21,16 @@ main {
   margin: 0;
 }
 
+.site-header > p a {
+  color: inherit;
+  text-underline-offset: 0.15em;
+}
+
+.site-header > p a:hover,
+.site-header > p a:focus-visible {
+  opacity: 0.75;
+}
+
 .user-guide-toggle {
   padding: 0.3rem 0.65rem;
   border: 1px solid currentColor;
