@@ -333,6 +333,22 @@ function isValidEventType(eventType) {
   );
 }
 
+function isValidEventIncomeRule(incomeRule) {
+  if (incomeRule === undefined) {
+    return true;
+  }
+
+  return (
+    incomeRule !== null &&
+    typeof incomeRule === "object" &&
+    incomeRule.type === "claim_then_daily" &&
+    Number.isSafeInteger(incomeRule.maxDays) &&
+    incomeRule.maxDays >= 0 &&
+    isValidResourceAmountMap(incomeRule.initialReward, false) &&
+    isValidResourceAmountMap(incomeRule.dailyReward, false)
+  );
+}
+
 async function loadEventTypes(path = EVENT_TYPES_PATH) {
   const response = await fetch(path);
 
@@ -375,6 +391,7 @@ function isValidEvent(event) {
     typeof event.incomeAdjustment === "object" &&
     isValidResourceAmountMap(event.incomeAdjustment.available, true) &&
     isValidResourceAmountMap(event.incomeAdjustment.complete, true) &&
+    isValidEventIncomeRule(event.incomeRule) &&
     Array.isArray(event.exchanges)
   );
 }

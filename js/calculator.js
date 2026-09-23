@@ -309,11 +309,161 @@ function addResourceAmounts(baseResources, adjustments = {}) {
   return resources;
 }
 
+function multiplyResourceAmounts(resources, multiplier) {
+  return Object.fromEntries(
+    Object.entries(resources).map(([resourceId, amount]) => [
+      resourceId,
+      amount * multiplier,
+    ]),
+  );
+}
+
+function calculateClaimThenDailyEventIncome(
+  currentTimestamp,
+  targetTimestamp,
+  event,
+  eventState,
+  todayIncomeClaimed,
+) {
+  const startTimestamp = parseCalendarDate(event.startDate);
+  const endTimestamp = parseCalendarDate(event.endDate);
+  const rule = event.incomeRule;
+  const absoluteLastRewardTimestamp =
+    endTimestamp + rule.maxDays * MILLISECONDS_PER_DAY;
+  const remainingDays = eventState.remainingDays ?? 0;
+  const initialRewardClaimed =
+    eventState.initialRewardClaimed ?? true;
+
+  if (
+    !Number.isSafeInteger(remainingDays) ||
+    remainingDays < 0 ||
+    remainingDays > rule.maxDays
+  ) {
+    return {
+      valid: false,
+      error: `活动“${event.name}”剩余签到天数必须是 0～${rule.maxDays} 的整数。`,
+    };
+  }
+
+  if (typeof initialRewardClaimed !== "boolean") {
+    return {
+      valid: false,
+      error: `活动“${event.name}”领取状态无效。`,
+    };
+  }
+
+  const ineligibleResult = {
+    valid: true,
+    error: null,
+    eventId: event.id,
+    eventName: event.name,
+    status: "expired",
+    eligible: false,
+    phase: null,
+    resources: {},
+    incomeRule: rule,
+    incomeRuleState: {
+      initialRewardClaimed,
+      remainingDays,
+    },
+    absoluteLastRewardDate: new Date(absoluteLastRewardTimestamp)
+      .toISOString()
+      .slice(0, 10),
+    rmbTotal: 0,
+    limitedRechargeRmb: 0,
+  };
+
+  if (
+    currentTimestamp > absoluteLastRewardTimestamp ||
+    (currentTimestamp > endTimestamp &&
+      (!initialRewardClaimed || remainingDays === 0))
+  ) {
+    return ineligibleResult;
+  }
+
+  const status = currentTimestamp < startTimestamp
+    ? "future"
+    : "current";
+  let initialResources = {};
+  let firstDailyRewardTimestamp = null;
+
+  if (!initialRewardClaimed) {
+    if (currentTimestamp <= endTimestamp) {
+      const assumedClaimTimestamp = Math.max(
+        currentTimestamp,
+        startTimestamp,
+      );
+
+      if (targetTimestamp >= assumedClaimTimestamp) {
+        initialResources = rule.initialReward;
+      }
+
+      firstDailyRewardTimestamp =
+        assumedClaimTimestamp + MILLISECONDS_PER_DAY;
+    }
+  } else if (remainingDays === rule.maxDays) {
+    firstDailyRewardTimestamp = Math.max(
+      currentTimestamp + MILLISECONDS_PER_DAY,
+      startTimestamp + MILLISECONDS_PER_DAY,
+    );
+  } else if (remainingDays > 0) {
+    firstDailyRewardTimestamp = currentTimestamp < startTimestamp
+      ? startTimestamp + MILLISECONDS_PER_DAY
+      : currentTimestamp +
+        (todayIncomeClaimed ? MILLISECONDS_PER_DAY : 0);
+  }
+
+  const lastDailyRewardTimestamp = Math.min(
+    targetTimestamp,
+    absoluteLastRewardTimestamp,
+  );
+  const reachableDailyRewardDays =
+    firstDailyRewardTimestamp !== null &&
+    firstDailyRewardTimestamp <= lastDailyRewardTimestamp
+      ? Math.floor(
+          (lastDailyRewardTimestamp - firstDailyRewardTimestamp) /
+            MILLISECONDS_PER_DAY,
+        ) + 1
+      : 0;
+  const dailyRewardDays = Math.min(
+    remainingDays,
+    reachableDailyRewardDays,
+  );
+  const dailyResources = multiplyResourceAmounts(
+    rule.dailyReward,
+    dailyRewardDays,
+  );
+
+  return {
+    valid: true,
+    error: null,
+    eventId: event.id,
+    eventName: event.name,
+    status,
+    eligible: true,
+    phase: "available",
+    resources: addResourceAmounts(initialResources, dailyResources),
+    incomeRule: rule,
+    incomeRuleState: {
+      initialRewardClaimed,
+      remainingDays,
+    },
+    dailyRewardDays,
+    absoluteLastRewardDate: new Date(absoluteLastRewardTimestamp)
+      .toISOString()
+      .slice(0, 10),
+    rmbTotal: 0,
+    limitedRechargeRmb: 0,
+  };
+}
+
 function calculateEventIncome(
   currentDate,
   targetDate,
   event,
   eventTypes,
+  eventState = {},
+  todayIncomeClaimed = true,
 ) {
   const currentTimestamp = parseCalendarDate(currentDate);
   const targetTimestamp = parseCalendarDate(targetDate);
@@ -333,6 +483,20 @@ function calculateEventIncome(
 
   if (!eventType) {
     return { valid: false, error: `活动“${event.name}”类型无效。` };
+  }
+
+  if (event.incomeRule?.type === "claim_then_daily") {
+    if (targetTimestamp === null) {
+      return { valid: false, error: "目标日期格式无效。" };
+    }
+
+    return calculateClaimThenDailyEventIncome(
+      currentTimestamp,
+      targetTimestamp,
+      event,
+      eventState,
+      todayIncomeClaimed,
+    );
   }
 
   const ineligibleResult = {
@@ -390,6 +554,8 @@ function calculateSelectedEventIncome(
   events,
   eventTypes,
   selectedEventIds,
+  eventStates = {},
+  todayIncomeClaimed = true,
 ) {
   if (targetMode !== "banner") {
     return {
@@ -411,6 +577,8 @@ function calculateSelectedEventIncome(
       targetDate,
       event,
       eventTypes,
+      eventStates[event.id] ?? {},
+      todayIncomeClaimed,
     );
 
     if (!result.valid) {

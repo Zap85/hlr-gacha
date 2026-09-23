@@ -71,6 +71,9 @@ const anniversaryWarmup = events.find((event) => event.id === "六周年预热")
 const anniversaryCelebration = events.find(
   (event) => event.id === "六周年庆典",
 );
+const anniversaryWineCard = events.find(
+  (event) => event.id === "六周年圣酒月卡",
+);
 const fivePersonEventType = eventTypes.find(
   (eventType) => eventType.id === "五人活动",
 );
@@ -86,6 +89,18 @@ assert.equal(anniversaryWarmup.type, "五人活动");
 assert.equal(anniversaryWarmup.startDate, "2026-09-19");
 assert.equal(anniversaryWarmup.endDate, "2026-10-12");
 assert.equal(anniversaryCelebration.type, "五人活动");
+assert.equal(anniversaryWineCard.type, "持续签到活动");
+assert.equal(anniversaryWineCard.startDate, "2026-09-20");
+assert.equal(anniversaryWineCard.endDate, "2026-10-23");
+assert.deepEqual(
+  JSON.parse(JSON.stringify(anniversaryWineCard.incomeRule)),
+  {
+    type: "claim_then_daily",
+    maxDays: 24,
+    initialReward: { diamond: 300 },
+    dailyReward: { diamond: 50 },
+  },
+);
 
 const beforeStart = calculateEventIncome(
   "2026-08-01",
@@ -279,6 +294,176 @@ assert.deepEqual(
   { diamond: 1266, common_paint: 3, timed_paint: 14 },
 );
 
+const unclaimedInWindow = calculateEventIncome(
+  "2026-09-20",
+  "2026-09-20",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: false, remainingDays: 24 },
+  false,
+);
+assert.equal(unclaimedInWindow.resources.diamond, 300);
+assert.equal(unclaimedInWindow.dailyRewardDays, 0);
+
+const beforeStartWineCard = calculateEventIncome(
+  "2026-09-18",
+  "2026-09-21",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: false, remainingDays: 24 },
+  false,
+);
+assert.equal(beforeStartWineCard.status, "future");
+assert.equal(beforeStartWineCard.resources.diamond, 350);
+assert.equal(beforeStartWineCard.dailyRewardDays, 1);
+
+const claimedWineCard = calculateEventIncome(
+  "2026-09-20",
+  "2026-09-21",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 23 },
+  true,
+);
+assert.equal(claimedWineCard.resources.diamond, 50);
+
+const fullRemainingToday = calculateEventIncome(
+  "2026-09-20",
+  "2026-09-20",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 24 },
+  false,
+);
+assert.equal(fullRemainingToday.resources.diamond, 0);
+assert.equal(fullRemainingToday.dailyRewardDays, 0);
+
+const partialRemainingTodayClaimed = calculateEventIncome(
+  "2026-09-20",
+  "2026-09-20",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 23 },
+  true,
+);
+const partialRemainingTodayUnclaimed = calculateEventIncome(
+  "2026-09-20",
+  "2026-09-20",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 23 },
+  false,
+);
+assert.equal(partialRemainingTodayClaimed.resources.diamond, 0);
+assert.equal(partialRemainingTodayUnclaimed.resources.diamond, 50);
+
+const zeroRemainingWineCard = calculateEventIncome(
+  "2026-09-20",
+  "2026-10-23",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 0 },
+  false,
+);
+assert.equal(zeroRemainingWineCard.resources.diamond, 0);
+
+const maximumDailyWineCard = calculateEventIncome(
+  "2026-09-20",
+  "2026-10-14",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 24 },
+  false,
+);
+assert.equal(maximumDailyWineCard.dailyRewardDays, 24);
+assert.equal(maximumDailyWineCard.resources.diamond, 1200);
+
+const nearTargetWineCard = calculateEventIncome(
+  "2026-09-20",
+  "2026-09-25",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 24 },
+  false,
+);
+assert.equal(nearTargetWineCard.dailyRewardDays, 5);
+assert.equal(nearTargetWineCard.resources.diamond, 250);
+
+const lastClaimDateWineCard = calculateEventIncome(
+  "2026-10-23",
+  "2026-11-16",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: false, remainingDays: 24 },
+  false,
+);
+assert.equal(lastClaimDateWineCard.absoluteLastRewardDate, "2026-11-16");
+assert.equal(lastClaimDateWineCard.dailyRewardDays, 24);
+assert.equal(lastClaimDateWineCard.resources.diamond, 1500);
+
+const afterClaimWindowWineCard = calculateEventIncome(
+  "2026-10-24",
+  "2026-10-25",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 10 },
+  false,
+);
+assert.equal(afterClaimWindowWineCard.eligible, true);
+assert.equal(afterClaimWindowWineCard.status, "current");
+assert.equal(afterClaimWindowWineCard.resources.diamond, 100);
+
+const expiredWineCard = calculateEventIncome(
+  "2026-11-17",
+  "2026-11-17",
+  anniversaryWineCard,
+  eventTypes,
+  { initialRewardClaimed: true, remainingDays: 24 },
+  false,
+);
+assert.equal(expiredWineCard.eligible, false);
+assert.equal(expiredWineCard.status, "expired");
+assert.equal(Object.keys(expiredWineCard.resources).length, 0);
+assert.equal(lastClaimDateWineCard.rmbTotal, 0);
+assert.equal(lastClaimDateWineCard.limitedRechargeRmb, 0);
+
+const selectedWineCardIncome = calculateSelectedEventIncome(
+  "banner",
+  "2026-10-24",
+  "2026-10-25",
+  [anniversaryWineCard],
+  eventTypes,
+  [anniversaryWineCard.id],
+  {
+    [anniversaryWineCard.id]: {
+      initialRewardClaimed: true,
+      remainingDays: 10,
+    },
+  },
+  false,
+);
+assert.equal(selectedWineCardIncome.selectedResources.diamond, 100);
+
+const unselectedWineCardIncome = calculateSelectedEventIncome(
+  "banner",
+  "2026-10-24",
+  "2026-10-25",
+  [anniversaryWineCard],
+  eventTypes,
+  [],
+  {
+    [anniversaryWineCard.id]: {
+      initialRewardClaimed: true,
+      remainingDays: 10,
+    },
+  },
+  false,
+);
+assert.equal(
+  Object.keys(unselectedWineCardIncome.selectedResources).length,
+  0,
+);
+
 const futureTestEvent = {
   ...soloEvent,
   id: "sample-future-event",
@@ -371,9 +556,21 @@ vm.runInContext(
 const loadEventTypes = vm.runInContext("loadEventTypes", loaderContext);
 const loadEvents = vm.runInContext("loadEvents", loaderContext);
 const isValidEvent = vm.runInContext("isValidEvent", loaderContext);
+const isValidEventIncomeRule = vm.runInContext(
+  "isValidEventIncomeRule",
+  loaderContext,
+);
 
 assert.equal(isValidEvent(futureTestEvent), true);
 assert.equal(isValidEvent({ ...futureTestEvent, status: "unknown" }), false);
+assert.equal(isValidEventIncomeRule(anniversaryWineCard.incomeRule), true);
+assert.equal(
+  isValidEventIncomeRule({
+    ...anniversaryWineCard.incomeRule,
+    maxDays: -1,
+  }),
+  false,
+);
 
 const appContext = vm.createContext({});
 vm.runInContext(readProjectFile(path.join("js", "app.js")), appContext);

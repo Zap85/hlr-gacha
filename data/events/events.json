@@ -70,11 +70,35 @@
       "type": "五人活动",
       "startDate": "2026-09-24",
       "endDate": "2026-10-12",
-      "status": "future",
+      "status": "current",
       "isRerun": false,
       "incomeAdjustment": {
         "available": {},
         "complete": {}
+      },
+      "exchanges": []
+    },
+    {
+      "id": "六周年圣酒月卡",
+      "name": "六周年圣酒月卡",
+      "type": "持续签到活动",
+      "startDate": "2026-09-20",
+      "endDate": "2026-10-23",
+      "status": "current",
+      "isRerun": false,
+      "incomeAdjustment": {
+        "available": {},
+        "complete": {}
+      },
+      "incomeRule": {
+        "type": "claim_then_daily",
+        "maxDays": 24,
+        "initialReward": {
+          "diamond": 300
+        },
+        "dailyReward": {
+          "diamond": 50
+        }
       },
       "exchanges": []
     }

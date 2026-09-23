@@ -34,6 +34,7 @@ let incomeCardRules = null;
 let incomeCardView = null;
 const eventIncomeState = {
   selectedEventIds: new Set(),
+  incomeRuleStates: {},
   resources: {},
 };
 let eventIncomeView = null;
@@ -186,6 +187,31 @@ function updateMonthlyCardInputState(selectionKey, value) {
 
   if (result.valid) {
     incomeCardSelections[selectionKey] = result.amount;
+  }
+
+  return result;
+}
+
+function updateEventIncomeRuleRemainingDays(eventId, value) {
+  const sourceEvent = events.find((event) => event.id === eventId);
+  const state = eventIncomeState.incomeRuleStates[eventId];
+
+  if (!sourceEvent?.incomeRule || !state) {
+    return { valid: false, amount: null, error: "未知的持续签到活动。" };
+  }
+
+  const result = parseInventoryAmount(value);
+
+  if (result.valid && result.amount > sourceEvent.incomeRule.maxDays) {
+    return {
+      valid: false,
+      amount: null,
+      error: `剩余签到天数不得超过 ${sourceEvent.incomeRule.maxDays} 天。`,
+    };
+  }
+
+  if (result.valid) {
+    state.remainingDays = result.amount;
   }
 
   return result;
@@ -670,6 +696,8 @@ function createEventIncomeCard(event) {
   const sourceEvent = events.find(
     (candidate) => candidate.id === event.eventId,
   );
+  const isClaimThenDaily =
+    sourceEvent?.incomeRule?.type === "claim_then_daily";
 
   card.className = "income-card event-income-card";
   card.classList.toggle("is-selected", event.selected);
@@ -677,7 +705,9 @@ function createEventIncomeCard(event) {
   card.setAttribute("role", "button");
   card.setAttribute("aria-pressed", String(event.selected));
   heading.textContent = event.eventName;
-  income.textContent = `${incomeLabel}：${formatEventResources(event.resources)}`;
+  income.textContent = isClaimThenDaily
+    ? `当前可计入钻石：${event.resources.diamond ?? 0} 钻`
+    : `${incomeLabel}：${formatEventResources(event.resources)}`;
   header.append(heading);
 
   if (sourceEvent?.isRerun) {
@@ -687,7 +717,62 @@ function createEventIncomeCard(event) {
     header.append(rerunBadge);
   }
 
-  card.append(header, income);
+  card.append(header);
+
+  if (isClaimThenDaily) {
+    const remainingDaysLabel = document.createElement("label");
+    const remainingDaysInput = document.createElement("input");
+    const remainingDaysError = document.createElement("p");
+    const initialRewardLabel = document.createElement("label");
+    const initialRewardClaimed = document.createElement("input");
+    const state = eventIncomeState.incomeRuleStates[event.eventId];
+
+    remainingDaysLabel.append("当前剩余签到天数", remainingDaysInput);
+    remainingDaysInput.type = "number";
+    remainingDaysInput.min = "0";
+    remainingDaysInput.max = String(sourceEvent.incomeRule.maxDays);
+    remainingDaysInput.step = "1";
+    remainingDaysInput.value = String(state.remainingDays);
+    remainingDaysInput.dataset.eventId = event.eventId;
+    remainingDaysError.className = "inventory-input-error";
+    remainingDaysError.setAttribute("aria-live", "polite");
+    initialRewardClaimed.type = "checkbox";
+    initialRewardClaimed.checked = state.initialRewardClaimed;
+    initialRewardClaimed.dataset.eventId = event.eventId;
+    initialRewardLabel.append(
+      initialRewardClaimed,
+      "领取当日300钻已领取",
+    );
+    card.append(
+      remainingDaysLabel,
+      remainingDaysError,
+      initialRewardLabel,
+      income,
+    );
+
+    remainingDaysInput.addEventListener("input", () => {
+      const result = updateEventIncomeRuleRemainingDays(
+        event.eventId,
+        remainingDaysInput.value,
+      );
+
+      remainingDaysError.textContent = result.error ?? "";
+      remainingDaysInput.setAttribute(
+        "aria-invalid",
+        String(!result.valid),
+      );
+
+      if (result.valid) {
+        updateEventIncomeResult();
+      }
+    });
+    initialRewardClaimed.addEventListener("change", () => {
+      state.initialRewardClaimed = initialRewardClaimed.checked;
+      updateEventIncomeResult();
+    });
+  } else {
+    card.append(income);
+  }
 
   function toggleEvent() {
     if (eventIncomeState.selectedEventIds.has(event.eventId)) {
@@ -699,8 +784,18 @@ function createEventIncomeCard(event) {
     updateEventIncomeResult();
   }
 
-  card.addEventListener("click", toggleEvent);
+  card.addEventListener("click", (clickEvent) => {
+    if (clickEvent.target.closest("input, label")) {
+      return;
+    }
+
+    toggleEvent();
+  });
   card.addEventListener("keydown", (keyboardEvent) => {
+    if (keyboardEvent.target.closest("input, label")) {
+      return;
+    }
+
     if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
       keyboardEvent.preventDefault();
       toggleEvent();
@@ -730,6 +825,8 @@ function updateEventIncomeResult() {
       events,
       eventTypes,
       [...eventIncomeState.selectedEventIds],
+      eventIncomeState.incomeRuleStates,
+      dailyIncomeSettings.todayIncomeClaimed,
     );
 
     eventIncomeState.resources = disabledResult.selectedResources;
@@ -761,6 +858,8 @@ function updateEventIncomeResult() {
     events,
     eventTypes,
     [...eventIncomeState.selectedEventIds],
+    eventIncomeState.incomeRuleStates,
+    dailyIncomeSettings.todayIncomeClaimed,
   );
 
   if (!result.valid) {
@@ -1699,6 +1798,7 @@ function initializeFreeDailyAccumulationModule() {
   todayIncomeClaimed.addEventListener("change", () => {
     dailyIncomeSettings.todayIncomeClaimed = todayIncomeClaimed.checked;
     updateFreeDailyAccumulationResult();
+    updateEventIncomeResult();
   });
   makeIncomeCardSelectable(
     incomeCardView.seasonalCard,
@@ -1779,6 +1879,20 @@ function initializeEventIncomeModule() {
       eventResourceTypes = loadedResourceTypes;
       eventIncomeState.selectedEventIds = new Set(
         getDefaultSelectedEventIds(events),
+      );
+      eventIncomeState.incomeRuleStates = Object.fromEntries(
+        events
+          .filter(
+            (event) =>
+              event.incomeRule?.type === "claim_then_daily",
+          )
+          .map((event) => [
+            event.id,
+            {
+              initialRewardClaimed: true,
+              remainingDays: 0,
+            },
+          ]),
       );
       eventIncomeLoadError =
         eventTypes.length === 0 || events.length === 0
