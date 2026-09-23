@@ -2232,6 +2232,61 @@ function formatCurrencyPackOtherContents(contents) {
     .join("，");
 }
 
+function formatCurrencyPackRandomContents(randomContents) {
+  return randomContents
+    .map(({ probability, contents }) => {
+      const reward = formatCurrencyPackContents(contents);
+      const percentage = `${Number((probability * 100).toFixed(10))}%`;
+      return `${reward}（${percentage}）`;
+    })
+    .join("，");
+}
+
+function getCurrencyPackDisplayGroupName(currencyPack) {
+  return ["六周年钻石礼包", "六周年红钻礼包"].includes(currencyPack.id)
+    ? "六周年活动"
+    : currencyPack.name;
+}
+
+function groupCurrencyPacksForDisplay(currencyPacks) {
+  return currencyPacks.reduce((displayGroups, currencyPack) => {
+    const name = getCurrencyPackDisplayGroupName(currencyPack);
+    let displayGroup = displayGroups.find((group) => group.name === name);
+
+    if (!displayGroup) {
+      displayGroup = { name, currencyPacks: [] };
+      displayGroups.push(displayGroup);
+    }
+
+    displayGroup.currencyPacks.push(currencyPack);
+    return displayGroups;
+  }, []);
+}
+
+function formatCurrencyPackDisplayGroupHeading(displayGroup) {
+  if (
+    displayGroup.currencyPacks.length !== 1 ||
+    displayGroup.currencyPacks[0].source === "monthly_card"
+  ) {
+    return displayGroup.name;
+  }
+
+  const [currencyPack] = displayGroup.currencyPacks;
+  return `${displayGroup.name}（${formatEventPackGroupDateRange(
+    currencyPack.startDate,
+    currencyPack.endDate,
+  )}）`;
+}
+
+function formatCurrencyPackTypeHeading(label, currencyPack, showDate) {
+  return showDate
+    ? `${label}（${formatEventPackGroupDateRange(
+        currencyPack.startDate,
+        currencyPack.endDate,
+      )}）`
+    : label;
+}
+
 function synchronizeCurrencyPacks() {
   const nextCurrencyPacks = getCurrencyPacksForMonthlyCard(
     eventCurrencyPacks,
@@ -2296,16 +2351,28 @@ function createCurrencyPackCard(
     card.append(otherContents);
   }
 
+  if (Array.isArray(pack.randomContents) && pack.randomContents.length > 0) {
+    const randomContents = document.createElement("p");
+    randomContents.textContent =
+      `随机奖励：${formatCurrencyPackRandomContents(pack.randomContents)}`;
+    card.append(randomContents);
+  }
+
   if (pack.cost.resourceId === "red_diamond") {
     const valueSummary = document.createElement("p");
     const theoreticalPulls = document.createElement("span");
     const redDiamondPerPull = document.createElement("span");
 
     valueSummary.className = "permanent-pack-value-summary";
+    const hasRandomContents =
+      Array.isArray(pack.randomContents) && pack.randomContents.length > 0;
+    const displayedPulls = hasRandomContents
+      ? valueResult.theoreticalPulls.toFixed(2)
+      : valueResult.theoreticalPulls;
     theoreticalPulls.textContent =
-      `理论抽数：${valueResult.theoreticalPulls}`;
+      `${hasRandomContents ? "期望抽数" : "理论抽数"}：${displayedPulls}`;
     redDiamondPerPull.textContent =
-      `单抽红钻价：${valueResult.redDiamondPerPull === null
+      `${hasRandomContents ? "期望单抽红钻价" : "单抽红钻价"}：${valueResult.redDiamondPerPull === null
         ? "—"
         : valueResult.redDiamondPerPull.toFixed(2)}`;
     valueSummary.append(theoreticalPulls, redDiamondPerPull);
@@ -2429,61 +2496,98 @@ function createCurrencyPackCard(
 function renderCurrencyPackGroups(displayableCurrencyPacks) {
   currencyPackView.groups.replaceChildren();
 
-  displayableCurrencyPacks.forEach((currencyPack, index) => {
-    const group = document.createElement("section");
-    const heading = document.createElement("h3");
-    const headingId = `currency-pack-group-${index}`;
-    const groups = groupCurrencyPackItems(
-      currencyPack,
-      dateSelectionState.targetDate,
-      dateSelectionState.targetBanner,
-      summaryResourceInstances,
-    );
-    const purchases =
-      currencyPackPurchaseState.purchases[currencyPack.id];
+  groupCurrencyPacksForDisplay(displayableCurrencyPacks).forEach(
+    (displayGroup, index) => {
+      const group = document.createElement("section");
+      const heading = document.createElement("h3");
+      const headingId = `currency-pack-group-${index}`;
 
-    group.className = "event-pack-group currency-pack-group";
-    group.setAttribute("aria-labelledby", headingId);
-    heading.id = headingId;
-    heading.textContent = currencyPack.name;
-    group.append(heading);
+      group.className = "event-pack-group currency-pack-group";
+      group.setAttribute("aria-labelledby", headingId);
+      heading.id = headingId;
+      heading.textContent =
+        formatCurrencyPackDisplayGroupHeading(displayGroup);
+      group.append(heading);
 
-    if (currencyPack.source === "monthly_card") {
-      const list = document.createElement("div");
-
-      list.className = "event-pack-card-grid";
-      groups.diamond.forEach((valueResult) => {
-        list.append(
-          createCurrencyPackCard(currencyPack, valueResult, purchases),
+      if (
+        displayGroup.currencyPacks.length === 1 &&
+        displayGroup.currencyPacks[0].source === "monthly_card"
+      ) {
+        const currencyPack = displayGroup.currencyPacks[0];
+        const groups = groupCurrencyPackItems(
+          currencyPack,
+          dateSelectionState.targetDate,
+          dateSelectionState.targetBanner,
+          summaryResourceInstances,
         );
+        const purchases =
+          currencyPackPurchaseState.purchases[currencyPack.id];
+        const list = document.createElement("div");
+
+        list.className = "event-pack-card-grid";
+        groups.diamond.forEach((valueResult) => {
+          list.append(
+            createCurrencyPackCard(currencyPack, valueResult, purchases),
+          );
+        });
+        group.append(list);
+        currencyPackView.groups.append(group);
+        return;
+      }
+
+      [
+        ["diamond", "钻石礼包"],
+        ["red_diamond", "红钻礼包"],
+      ].forEach(([resourceId, label]) => {
+        displayGroup.currencyPacks.forEach((currencyPack) => {
+          const groups = groupCurrencyPackItems(
+            currencyPack,
+            dateSelectionState.targetDate,
+            dateSelectionState.targetBanner,
+            summaryResourceInstances,
+          );
+          const purchases =
+            currencyPackPurchaseState.purchases[currencyPack.id];
+          const packEntries = groups[resourceId].map((valueResult) => ({
+            currencyPack,
+            purchases,
+            valueResult,
+          }));
+
+          if (packEntries.length === 0) {
+            return;
+          }
+
+          const typeGroup = document.createElement("section");
+          const typeHeading = document.createElement("h4");
+          const list = document.createElement("div");
+
+          typeGroup.className = "currency-pack-type-group";
+          typeHeading.textContent = formatCurrencyPackTypeHeading(
+            label,
+            currencyPack,
+            displayGroup.currencyPacks.length > 1,
+          );
+          list.className = "event-pack-card-grid";
+          packEntries.forEach(
+            ({ currencyPack, purchases, valueResult }) => {
+              list.append(
+                createCurrencyPackCard(
+                  currencyPack,
+                  valueResult,
+                  purchases,
+                ),
+              );
+            },
+          );
+          typeGroup.append(typeHeading, list);
+          group.append(typeGroup);
+        });
       });
-      group.append(list);
+
       currencyPackView.groups.append(group);
-      return;
-    }
-
-    [
-      ["diamond", "钻石礼包"],
-      ["red_diamond", "红钻礼包"],
-    ].forEach(([resourceId, label]) => {
-      const typeGroup = document.createElement("section");
-      const typeHeading = document.createElement("h4");
-      const list = document.createElement("div");
-
-      typeGroup.className = "currency-pack-type-group";
-      typeHeading.textContent = label;
-      list.className = "event-pack-card-grid";
-      groups[resourceId].forEach((valueResult) => {
-        list.append(
-          createCurrencyPackCard(currencyPack, valueResult, purchases),
-        );
-      });
-      typeGroup.append(typeHeading, list);
-      group.append(typeGroup);
-    });
-
-    currencyPackView.groups.append(group);
-  });
+    },
+  );
 }
 
 function updateCurrencyPacksResult() {
@@ -2602,56 +2706,80 @@ function initializeCurrencyPacksModule() {
 }
 
 function initializeUserGuideModule() {
-  const toggle = document.querySelector("#user-guide-toggle");
+  const toggles = document.querySelectorAll("[data-guide-source]");
   const modal = document.querySelector("#user-guide-modal");
   const backdrop = modal.querySelector(".user-guide-backdrop");
   const closeButton = document.querySelector("#user-guide-close");
   const body = document.querySelector("#user-guide-body");
-  let isLoaded = false;
-  let loadPromise = null;
+  const guideCache = new Map();
+  const guideLoadPromises = new Map();
+  let activeToggle = null;
+  let activeSource = "";
 
-  function loadUserGuide() {
-    body.textContent = "正在加载使用说明……";
-    loadPromise = fetch("docs/user-guide.html")
+  function loadGuide(source, label) {
+    body.textContent = `正在加载${label}……`;
+    const loadPromise = fetch(source)
       .then((response) => {
         if (!response.ok) {
-          throw new Error("使用说明加载失败");
+          throw new Error(`${label}加载失败`);
         }
 
         return response.text();
       })
       .then((html) => {
-        body.innerHTML = html;
-        isLoaded = true;
+        guideCache.set(source, html);
+        guideLoadPromises.delete(source);
+
+        if (activeSource === source) {
+          body.innerHTML = html;
+        }
       })
       .catch(() => {
-        body.textContent = "使用说明加载失败，请稍后重试。";
-        loadPromise = null;
+        guideLoadPromises.delete(source);
+
+        if (activeSource === source) {
+          body.textContent = `${label}加载失败，请稍后重试。`;
+        }
       });
+
+    guideLoadPromises.set(source, loadPromise);
   }
 
-  function openUserGuide() {
+  function openGuide(toggle) {
+    const source = toggle.dataset.guideSource;
+    const label = toggle.dataset.guideLabel;
+
+    activeToggle = toggle;
+    activeSource = source;
+    modal.querySelector(".user-guide-dialog").setAttribute("aria-label", label);
+    closeButton.setAttribute("aria-label", `关闭${label}`);
     modal.hidden = false;
     document.body.classList.add("user-guide-modal-open");
     closeButton.focus();
 
-    if (!isLoaded && loadPromise === null) {
-      loadUserGuide();
+    if (guideCache.has(source)) {
+      body.innerHTML = guideCache.get(source);
+    } else if (!guideLoadPromises.has(source)) {
+      loadGuide(source, label);
+    } else {
+      body.textContent = `正在加载${label}……`;
     }
   }
 
-  function closeUserGuide() {
+  function closeGuide() {
     modal.hidden = true;
     document.body.classList.remove("user-guide-modal-open");
-    toggle.focus();
+    activeToggle?.focus();
   }
 
-  toggle.addEventListener("click", openUserGuide);
-  closeButton.addEventListener("click", closeUserGuide);
-  backdrop.addEventListener("click", closeUserGuide);
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => openGuide(toggle));
+  });
+  closeButton.addEventListener("click", closeGuide);
+  backdrop.addEventListener("click", closeGuide);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !modal.hidden) {
-      closeUserGuide();
+      closeGuide();
     }
   });
 }

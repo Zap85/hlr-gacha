@@ -1927,20 +1927,28 @@ function calculateCurrencyPackValue(
   const resourceInstancesById = new Map(
     resourceInstances.map((resource) => [resource.id, resource]),
   );
-  let theoreticalPulls = 0;
+  const calculateContentsPulls = (contents) =>
+    contents.reduce((total, { resourceId, amount }) => {
+      if (resourceId === "diamond") {
+        return total + amount / 150;
+      }
 
-  pack.contents.forEach(({ resourceId, amount }) => {
-    if (resourceId === "common_paint") {
-      theoreticalPulls += amount;
-      return;
-    }
+      if (resourceId === "common_paint") {
+        return total + amount;
+      }
 
-    const resource = resourceInstancesById.get(resourceId);
-
-    if (resource?.category === "limited_paint") {
-      theoreticalPulls += amount;
-    }
-  });
+      const resource = resourceInstancesById.get(resourceId);
+      return resource?.category === "limited_paint"
+        ? total + amount
+        : total;
+    }, 0);
+  const theoreticalPulls =
+    calculateContentsPulls(pack.contents) +
+    (pack.randomContents ?? []).reduce(
+      (total, outcome) =>
+        total + outcome.probability * calculateContentsPulls(outcome.contents),
+      0,
+    );
 
   return {
     pack,

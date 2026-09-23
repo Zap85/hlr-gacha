@@ -6,6 +6,10 @@ const projectRoot = path.resolve(__dirname, "..");
 const indexHtml = fs.readFileSync(path.join(projectRoot, "index.html"), "utf8");
 const styleCss = fs.readFileSync(path.join(projectRoot, "css", "style.css"), "utf8");
 const appJs = fs.readFileSync(path.join(projectRoot, "js", "app.js"), "utf8");
+const updateGuideHtml = fs.readFileSync(
+  path.join(projectRoot, "docs", "update-guide.html"),
+  "utf8",
+);
 
 const orderedSectionIds = [
   "date-section-title",
@@ -33,15 +37,20 @@ assert.match(indexHtml, /class="calculator-sidebar"/);
 assert.match(indexHtml, /class="calculator-workflow"/);
 assert.match(indexHtml, /href="docs\/user-guide\.css"/);
 assert.match(indexHtml, /id="user-guide-toggle"[^>]*aria-haspopup="dialog"[^>]*>使用说明<\/button>/);
+assert.match(indexHtml, /id="update-guide-toggle"[^>]*aria-haspopup="dialog"[^>]*data-guide-source="docs\/update-guide\.html"[^>]*>更新说明<\/button>/);
 assert.match(indexHtml, /id="user-guide-modal"[^>]*hidden>/);
 assert.match(indexHtml, /class="user-guide-dialog" role="dialog" aria-modal="true" aria-label="使用说明"/);
 assert.match(indexHtml, /id="user-guide-close"[^>]*aria-label="关闭使用说明"[^>]*>×<\/button>/);
 assert.doesNotMatch(indexHtml, /id="user-guide-panel"/);
 assert.doesNotMatch(indexHtml, /class="user-guide-content"/);
-assert.match(appJs, /fetch\("docs\/user-guide\.html"\)/);
-assert.match(appJs, /if \(!isLoaded && loadPromise === null\)/);
+assert.match(appJs, /fetch\(source\)/);
+assert.match(appJs, /guideCache\.has\(source\)/);
+assert.match(appJs, /guideLoadPromises\.has\(source\)/);
 assert.match(appJs, /event\.key === "Escape" && !modal\.hidden/);
 assert.match(appJs, /document\.body\.classList\.add\("user-guide-modal-open"\)/);
+assert.match(updateGuideHtml, /<h2>更新说明<\/h2>/);
+assert.match(updateGuideHtml, /09\.23 更新至六周年庆典版本/);
+assert.match(updateGuideHtml, /<ol>/);
 const sidebarStart = indexHtml.indexOf('<aside class="calculator-sidebar">');
 const workflowStart = indexHtml.indexOf('<div class="calculator-workflow">');
 const inventoryStart = indexHtml.indexOf('id="inventory-section-title"');

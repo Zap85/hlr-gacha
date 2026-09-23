@@ -16,6 +16,7 @@ const EVENT_PACK_PATHS = [
 ];
 const CURRENCY_PACK_PATHS = [
   "data/packs/currency-packs/庄园诡戏.json",
+  "data/packs/currency-packs/六周年.json",
 ];
 
 function isValidCalendarDate(value) {
@@ -832,7 +833,11 @@ function isValidCurrencyPackItem(pack, validResourceIds) {
     ) ||
     !isValidEventPackTrigger(pack.trigger) ||
     !Array.isArray(pack.deferredRewards) ||
-    !pack.deferredRewards.every(isValidFixedDateDeferredReward)
+    !pack.deferredRewards.every(isValidFixedDateDeferredReward) ||
+    !isValidEventPackRandomContents(
+      pack.randomContents,
+      validResourceIds,
+    )
   ) {
     return false;
   }
@@ -918,6 +923,7 @@ async function loadCurrencyPacks(
   const currencyPackIds = new Set();
 
   return currencyPackData
+    .flatMap((data) => (Array.isArray(data) ? data : [data]))
     .map((currencyPack) =>
       sanitizeCurrencyPack(currencyPack, validResourceIds),
     )

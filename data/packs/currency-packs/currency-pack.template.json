@@ -44,6 +44,17 @@
           "amount": 10
         }
       ],
+      "randomContents": [
+        {
+          "probability": 1,
+          "contents": [
+            {
+              "resourceId": "diamond",
+              "amount": 60
+            }
+          ]
+        }
+      ],
       "otherContents": [],
       "prerequisites": [],
       "trigger": null,

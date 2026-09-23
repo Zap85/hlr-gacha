@@ -1,0 +1,198 @@
+[
+  {
+    "id": "六周年预热钻石红钻礼包",
+    "name": "六周年预热",
+    "eventId": "六周年预热",
+    "startDate": "2026-09-17",
+    "endDate": "2026-09-23",
+    "packs": [
+      {
+        "id": "一杯一杯单人包",
+        "name": "一杯一杯单人包",
+        "cost": { "resourceId": "diamond", "amount": 50 },
+        "purchaseRule": { "type": "total", "limit": 5 },
+        "contents": [],
+        "otherContents": [{ "name": "一杯一杯贴纸", "amount": 1 }],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "仅售五钻海螺肉",
+        "name": "仅售五钻海螺肉",
+        "cost": { "resourceId": "diamond", "amount": 5 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [{ "name": "贴纸", "amount": 1 }],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "旅途伙伴贴纸包",
+        "name": "旅途伙伴贴纸包",
+        "cost": { "resourceId": "diamond", "amount": 150 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [{ "name": "旅途伙伴贴纸", "amount": 5 }],
+        "prerequisites": ["仅售五钻海螺肉"],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "日常伙伴贴纸包",
+        "name": "日常伙伴贴纸包",
+        "cost": { "resourceId": "diamond", "amount": 150 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [{ "name": "日常伙伴贴纸", "amount": 5 }],
+        "prerequisites": ["仅售五钻海螺肉"],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "快乐收藏盲盒",
+        "name": "快乐收藏盲盒",
+        "cost": { "resourceId": "red_diamond", "amount": 30 },
+        "purchaseRule": { "type": "daily", "limit": 30 },
+        "contents": [],
+        "randomContents": [
+          {
+            "probability": 0.2,
+            "contents": [{ "resourceId": "diamond", "amount": 58 }]
+          },
+          {
+            "probability": 0.7,
+            "contents": [{ "resourceId": "diamond", "amount": 68 }]
+          },
+          {
+            "probability": 0.1,
+            "contents": [{ "resourceId": "diamond", "amount": 138 }]
+          }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "自选稀有服装礼盒",
+        "name": "自选稀有服装礼盒",
+        "cost": { "resourceId": "red_diamond", "amount": 680 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [{ "name": "自选稀有服装", "amount": 1 }],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "六周年钻石礼包",
+    "name": "六周年钻石礼包",
+    "eventId": "六周年庆典",
+    "startDate": "2026-09-19",
+    "endDate": "2026-10-12",
+    "packs": [
+      {
+        "id": "六周年礼物包",
+        "name": "六周年礼物包",
+        "cost": { "resourceId": "diamond", "amount": 120 },
+        "purchaseRule": { "type": "total", "limit": 5 },
+        "contents": [],
+        "otherContents": [
+          { "name": "对应角色好感礼盒", "amount": 30 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "轻松钓鱼贴纸包",
+        "name": "轻松钓鱼贴纸包",
+        "cost": { "resourceId": "diamond", "amount": 220 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [],
+        "otherContents": [{ "name": "主题装饰/贴纸", "amount": 10 }],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  },
+  {
+    "id": "六周年红钻礼包",
+    "name": "六周年红钻礼包",
+    "eventId": "六周年庆典",
+    "startDate": "2026-09-24",
+    "endDate": "2026-10-12",
+    "packs": [
+      {
+        "id": "永夜颜料套装",
+        "name": "永夜颜料套装",
+        "cost": { "resourceId": "red_diamond", "amount": 450 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [{ "resourceId": "common_paint", "amount": 6 }],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜周年特惠包",
+        "name": "永夜周年特惠包",
+        "cost": { "resourceId": "red_diamond", "amount": 680 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 12 }
+        ],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜周年大礼包",
+        "name": "永夜周年大礼包",
+        "cost": { "resourceId": "red_diamond", "amount": 880 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [
+          { "resourceId": "limited-paint-永夜老荷兰", "amount": 15 }
+        ],
+        "otherContents": [
+          { "name": "金币", "amount": 20000 },
+          { "name": "香浓拿铁", "amount": 1 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "咖啡外送订单",
+        "name": "咖啡外送订单",
+        "cost": { "resourceId": "red_diamond", "amount": 30 },
+        "purchaseRule": { "type": "daily", "limit": 3 },
+        "contents": [],
+        "otherContents": [
+          { "name": "冰美式", "amount": 3 },
+          { "name": "金币", "amount": 5000 }
+        ],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      },
+      {
+        "id": "永夜特殊颜料盒",
+        "name": "永夜特殊颜料盒",
+        "cost": { "resourceId": "red_diamond", "amount": 1980 },
+        "purchaseRule": { "type": "total", "limit": 1 },
+        "contents": [{ "resourceId": "common_paint", "amount": 28 }],
+        "otherContents": [],
+        "prerequisites": [],
+        "trigger": null,
+        "deferredRewards": []
+      }
+    ]
+  }
+]

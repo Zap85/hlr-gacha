@@ -14,6 +14,11 @@ const currencyPackData = JSON.parse(
     path.join("data", "packs", "currency-packs", "庄园诡戏.json"),
   ),
 );
+const anniversaryCurrencyPackData = JSON.parse(
+  readProjectFile(
+    path.join("data", "packs", "currency-packs", "六周年.json"),
+  ),
+);
 const resourceTypeData = JSON.parse(
   readProjectFile(path.join("data", "resources", "resource-types.json")),
 );
@@ -27,7 +32,20 @@ const constantsData = JSON.parse(
   readProjectFile(path.join("data", "constants.json")),
 );
 const indexHtml = readProjectFile("index.html");
+const appJavaScript = readProjectFile(path.join("js", "app.js"));
+const dateRangeFormatterSource = appJavaScript.match(
+  /function formatEventPackGroupDateRange[\s\S]*?\n}/,
+)[0];
 const calculatorContext = vm.createContext({});
+const displayGroupingSource = appJavaScript.match(
+  /function getCurrencyPackDisplayGroupName[\s\S]*?\n}\n\nfunction formatCurrencyPackTypeHeading[\s\S]*?\n}/,
+)[0];
+const displayGroupingContext = vm.createContext({});
+
+vm.runInContext(
+  `${dateRangeFormatterSource}\n${displayGroupingSource}`,
+  displayGroupingContext,
+);
 
 vm.runInContext(
   readProjectFile(path.join("js", "calculator.js")),
@@ -78,12 +96,192 @@ const synchronizeCurrencyPackPurchaseState = vm.runInContext(
   "synchronizeCurrencyPackPurchaseState",
   calculatorContext,
 );
+const groupCurrencyPacksForDisplay = vm.runInContext(
+  "groupCurrencyPacksForDisplay",
+  displayGroupingContext,
+);
+const formatCurrencyPackDisplayGroupHeading = vm.runInContext(
+  "formatCurrencyPackDisplayGroupHeading",
+  displayGroupingContext,
+);
+const formatCurrencyPackTypeHeading = vm.runInContext(
+  "formatCurrencyPackTypeHeading",
+  displayGroupingContext,
+);
 const packs = currencyPackData.packs;
 const resourceInstances = resourceInstanceData.resources;
 const monthlyCardConfig =
   constantsData.constants.incomeCards.monthlyCard.weeklyDiscountCurrencyPack;
 const manorBanner = { id: "庄园诡戏", tags: [] };
 const otherBanner = { id: "六周年庆典", tags: [] };
+const anniversaryBanner = { id: "六周年庆典", tags: [] };
+const anniversaryPreheatPack = anniversaryCurrencyPackData.find(
+  (currencyPack) => currencyPack.id === "六周年预热钻石红钻礼包",
+);
+const anniversaryDiamondPack = anniversaryCurrencyPackData.find(
+  (currencyPack) => currencyPack.id === "六周年钻石礼包",
+);
+const anniversaryRedDiamondPack = anniversaryCurrencyPackData.find(
+  (currencyPack) => currencyPack.id === "六周年红钻礼包",
+);
+
+assert.equal(anniversaryCurrencyPackData.length, 3);
+assert.ok(anniversaryPreheatPack);
+assert.ok(anniversaryDiamondPack);
+assert.ok(anniversaryRedDiamondPack);
+assert.deepEqual(
+  Array.from(
+    groupCurrencyPacksForDisplay(anniversaryCurrencyPackData),
+    (group) => ({
+      name: group.name,
+      currencyPackIds: Array.from(
+        group.currencyPacks,
+        (currencyPack) => currencyPack.id,
+      ),
+    }),
+  ),
+  [
+    {
+      name: "六周年预热",
+      currencyPackIds: ["六周年预热钻石红钻礼包"],
+    },
+    {
+      name: "六周年活动",
+      currencyPackIds: ["六周年钻石礼包", "六周年红钻礼包"],
+    },
+  ],
+);
+const fullAnniversaryDisplayGroups = groupCurrencyPacksForDisplay(
+  anniversaryCurrencyPackData,
+);
+assert.equal(
+  formatCurrencyPackDisplayGroupHeading(fullAnniversaryDisplayGroups[0]),
+  "六周年预热（09.17-09.23）",
+);
+assert.equal(
+  formatCurrencyPackDisplayGroupHeading(fullAnniversaryDisplayGroups[1]),
+  "六周年活动",
+);
+assert.equal(
+  formatCurrencyPackTypeHeading(
+    "钻石礼包",
+    anniversaryDiamondPack,
+    true,
+  ),
+  "钻石礼包（09.19-10.12）",
+);
+assert.equal(
+  formatCurrencyPackTypeHeading(
+    "红钻礼包",
+    anniversaryRedDiamondPack,
+    true,
+  ),
+  "红钻礼包（09.24-10.12）",
+);
+
+const anniversaryGroupsOnSeptember19 = groupCurrencyPacksForDisplay(
+  getDisplayableCurrencyPacks(
+    anniversaryCurrencyPackData,
+    "2026-09-19",
+    "2026-09-19",
+  ),
+);
+assert.deepEqual(
+  Array.from(anniversaryGroupsOnSeptember19, (group) => group.name),
+  ["六周年预热", "六周年活动"],
+);
+assert.deepEqual(
+  Array.from(
+    groupCurrencyPackItems(
+      anniversaryGroupsOnSeptember19.find(
+        (group) => group.name === "六周年活动",
+      ).currencyPacks[0],
+      "2026-09-19",
+      anniversaryBanner,
+      resourceInstances,
+    ).red_diamond,
+  ),
+  [],
+);
+
+const anniversaryGroupsOnSeptember24 = groupCurrencyPacksForDisplay(
+  getDisplayableCurrencyPacks(
+    anniversaryCurrencyPackData,
+    "2026-09-24",
+    "2026-09-24",
+  ),
+);
+assert.deepEqual(
+  Array.from(anniversaryGroupsOnSeptember24, (group) => ({
+    name: group.name,
+    currencyPackIds: Array.from(
+      group.currencyPacks,
+      (currencyPack) => currencyPack.id,
+    ),
+  })),
+  [
+    {
+      name: "六周年活动",
+      currencyPackIds: ["六周年钻石礼包", "六周年红钻礼包"],
+    },
+  ],
+);
+
+const singleCharacterPack = anniversaryPreheatPack.packs.find(
+  (pack) => pack.id === "一杯一杯单人包",
+);
+assert.deepEqual(singleCharacterPack.purchaseRule, {
+  type: "total",
+  limit: 5,
+});
+
+const anniversaryGiftPacks = anniversaryDiamondPack.packs.filter(
+  (pack) => pack.id === "六周年礼物包",
+);
+assert.equal(anniversaryGiftPacks.length, 1);
+assert.deepEqual(anniversaryGiftPacks[0].purchaseRule, {
+  type: "total",
+  limit: 5,
+});
+
+const blindBox = anniversaryPreheatPack.packs.find(
+  (pack) => pack.id === "快乐收藏盲盒",
+);
+const coffeeDelivery = anniversaryRedDiamondPack.packs.find(
+  (pack) => pack.id === "咖啡外送订单",
+);
+assert.deepEqual(blindBox.purchaseRule, { type: "daily", limit: 30 });
+assert.deepEqual(coffeeDelivery.purchaseRule, { type: "daily", limit: 3 });
+assert.equal(
+  getCurrencyPackMaximumQuantity(
+    blindBox,
+    anniversaryPreheatPack,
+    "2026-09-20",
+    "2026-09-23",
+  ),
+  120,
+);
+assert.equal(
+  getCurrencyPackMaximumQuantity(
+    coffeeDelivery,
+    anniversaryRedDiamondPack,
+    "2026-09-24",
+    "2026-09-26",
+  ),
+  9,
+);
+assert.deepEqual(
+  anniversaryPreheatPack.packs.find(
+    (pack) => pack.id === "旅途伙伴贴纸包",
+  ).prerequisites,
+  ["仅售五钻海螺肉"],
+);
+assert.deepEqual(
+  anniversaryPreheatPack.packs.find(
+    (pack) => pack.id === "日常伙伴贴纸包",
+  ).prerequisites,
+  ["仅售五钻海螺肉"],
+);
 
 assert.equal(monthlyCardConfig.name, "月卡");
 assert.equal(monthlyCardConfig.pack.name, "每周优惠十连");
@@ -278,6 +476,10 @@ assert.ok(
   indexHtml.indexOf('id="currency-packs-error"') <
     indexHtml.indexOf('id="currency-pack-groups"'),
 );
+assert.match(appJavaScript, /随机奖励：/);
+assert.match(appJavaScript, /期望抽数/);
+assert.match(appJavaScript, /期望单抽红钻价/);
+assert.match(appJavaScript, /if \(packEntries\.length === 0\) \{/);
 
 assert.equal(
   isCurrencyPackVisible("2026-08-28", "2026-09-10", currencyPackData),
@@ -369,6 +571,25 @@ nonApplicableGrouped.red_diamond.forEach((result, index) => {
 });
 assert.equal(nonApplicableGrouped.red_diamond.length, 4);
 
+const anniversaryPreheatGrouped = groupCurrencyPackItems(
+  anniversaryPreheatPack,
+  "2026-09-23",
+  anniversaryBanner,
+  resourceInstances,
+);
+const blindBoxValue = anniversaryPreheatGrouped.red_diamond.find(
+  (result) => result.pack.id === "快乐收藏盲盒",
+);
+const expectedBlindBoxDiamond =
+  58 * 0.2 + 68 * 0.7 + 138 * 0.1;
+assert.equal(expectedBlindBoxDiamond, 73);
+assert.ok(
+  Math.abs(blindBoxValue.theoreticalPulls - 73 / 150) < 1e-10,
+);
+assert.ok(
+  Math.abs(blindBoxValue.redDiamondPerPull - 30 / (73 / 150)) < 1e-10,
+);
+
 function selectPack(
   purchaseState,
   packId,
@@ -399,6 +620,77 @@ const baseResources = {
   limited_paint: 3,
 };
 const unchangedBaseResources = { ...baseResources };
+
+let anniversaryPreheatState = createCurrencyPackPurchaseState([
+  anniversaryPreheatPack,
+]);
+const rejectedStickerPack = updateCurrencyPackPurchase(
+  [anniversaryPreheatPack],
+  anniversaryPreheatState,
+  anniversaryPreheatPack.id,
+  "旅途伙伴贴纸包",
+  true,
+  1,
+  baseResources,
+  "2026-09-17",
+  "2026-09-23",
+  anniversaryBanner,
+  resourceInstances,
+);
+assert.equal(rejectedStickerPack.valid, false);
+assert.match(rejectedStickerPack.error, /仅售五钻海螺肉/);
+
+const selectedPrerequisite = updateCurrencyPackPurchase(
+  [anniversaryPreheatPack],
+  anniversaryPreheatState,
+  anniversaryPreheatPack.id,
+  "仅售五钻海螺肉",
+  true,
+  1,
+  baseResources,
+  "2026-09-17",
+  "2026-09-23",
+  anniversaryBanner,
+  resourceInstances,
+);
+assert.equal(selectedPrerequisite.valid, true);
+anniversaryPreheatState = selectedPrerequisite.purchaseState;
+const selectedStickerPack = updateCurrencyPackPurchase(
+  [anniversaryPreheatPack],
+  anniversaryPreheatState,
+  anniversaryPreheatPack.id,
+  "旅途伙伴贴纸包",
+  true,
+  1,
+  baseResources,
+  "2026-09-17",
+  "2026-09-23",
+  anniversaryBanner,
+  resourceInstances,
+);
+assert.equal(selectedStickerPack.valid, true);
+
+const blindBoxState = createCurrencyPackPurchaseState([
+  anniversaryPreheatPack,
+]);
+blindBoxState[anniversaryPreheatPack.id][blindBox.id] = {
+  selected: true,
+  quantity: 1,
+};
+const blindBoxSummary = calculateCurrencyPackPurchaseSummary(
+  [anniversaryPreheatPack],
+  blindBoxState,
+  baseResources,
+  "2026-09-17",
+  "2026-09-23",
+  anniversaryBanner,
+  resourceInstances,
+);
+assert.equal(blindBoxSummary.valid, true);
+assert.equal(blindBoxSummary.costs.red_diamond, 30);
+assert.equal(blindBoxSummary.resources.red_diamond, 3970);
+assert.equal(blindBoxSummary.resources.diamond, baseResources.diamond);
+assert.equal(blindBoxSummary.rewards.diamond ?? 0, 0);
 
 let monthlyPurchaseState = createCurrencyPackPurchaseState(
   monthlyCardCurrencyPacks,
@@ -787,6 +1079,45 @@ assert.equal(
   packs.every((pack) => isValidCurrencyPackItem(pack, validResourceIds)),
   true,
 );
+assert.equal(
+  anniversaryCurrencyPackData.every((currencyPack) =>
+    currencyPack.packs.every((pack) =>
+      isValidCurrencyPackItem(pack, validResourceIds),
+    ),
+  ),
+  true,
+);
+assert.equal(
+  isValidCurrencyPackItem(
+    {
+      ...blindBox,
+      randomContents: blindBox.randomContents.map((outcome, index) => ({
+        ...outcome,
+        probability: index === 0 ? 0.1 : outcome.probability,
+      })),
+    },
+    validResourceIds,
+  ),
+  false,
+);
+assert.equal(
+  isValidCurrencyPackItem(
+    {
+      ...blindBox,
+      randomContents: [
+        {
+          probability: 1,
+          contents: [
+            { resourceId: "diamond", amount: 58 },
+            { resourceId: "diamond", amount: 68 },
+          ],
+        },
+      ],
+    },
+    validResourceIds,
+  ),
+  false,
+);
 
 const invalidCurrencyPack = {
   ...currencyPackData,
@@ -833,6 +1164,7 @@ loaderContext.fetch = async (requestedPath) => {
     "data/resources/resource-types.json": resourceTypeData,
     "data/resources/resources.json": resourceInstanceData,
     "data/packs/currency-packs/庄园诡戏.json": currencyPackData,
+    "data/packs/currency-packs/六周年.json": anniversaryCurrencyPackData,
   };
 
   return {
@@ -844,8 +1176,17 @@ loaderContext.fetch = async (requestedPath) => {
 (async () => {
   const loaded = await loadCurrencyPacks();
 
-  assert.equal(loaded.length, 1);
+  assert.equal(loaded.length, 4);
   assert.equal(loaded[0].packs.length, 6);
+  assert.deepEqual(
+    Array.from(loaded, (currencyPack) => currencyPack.id),
+    [
+      "庄园诡戏钻石红钻礼包",
+      "六周年预热钻石红钻礼包",
+      "六周年钻石礼包",
+      "六周年红钻礼包",
+    ],
+  );
   assert.equal(
     requestedPaths.includes(
       "data/packs/currency-packs/currency-pack.template.json",
